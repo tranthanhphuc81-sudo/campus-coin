@@ -1,0 +1,21 @@
+sequenceDiagram
+  autonumber
+  actor SV as Sinh viên
+  participant FE as React SPA
+  participant API as Import API
+  participant CAT as Categorizer
+  participant DB as MySQL
+  SV->>FE: Tải file CSV (≤ 2MB, ≤ 5.000 dòng)
+  FE->>API: POST /imports (multipart)
+  API->>API: Kiểm tra đuôi, MIME, kích thước, mã hóa UTF-8
+  API->>API: Tính SHA-256 file → chặn nhập trùng
+  API->>DB: INSERT import_batch (status = uploaded)
+  API->>API: Parse streaming, map cột, validate từng dòng (xử lý ngay trong request)
+  API->>CAT: Phân loại hàng loạt (theo lô 50 mô tả)
+  API->>DB: Lưu preview + lỗi từng dòng (status = previewed)
+  API-->>FE: 200 {batchId} + bản xem trước, gợi ý danh mục, dòng lỗi
+  SV->>FE: Sửa danh mục / bỏ chọn dòng → Xác nhận
+  FE->>API: POST /imports/{id}/commit
+  API->>DB: Một DB transaction: INSERT các giao dịch (source = csv_import) + history
+  API->>DB: status = committed, success_rows, failed_rows
+  API-->>FE: 200 kết quả + link tải báo cáo lỗi

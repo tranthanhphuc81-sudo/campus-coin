@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "GitHub.copilot-chat",
+    "anthropic.claude-code",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "Prisma.prisma",
+    "vitest.explorer",
+    "bierner.markdown-mermaid",
+    "ms-azuretools.vscode-docker",
+    "cweijan.vscode-mysql-client2"
+  ]
+}

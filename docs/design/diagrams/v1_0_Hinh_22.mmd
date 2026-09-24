@@ -1,0 +1,16 @@
+flowchart TB
+  s(["Admin truy cập /admin/login"]) --> i1["Email + mật khẩu"]
+  i1 --> q1{"Hợp lệ &<br/>role = admin?"}
+  q1 -- "Không" --> f1["401 + ghi audit,<br/>khóa sau 5 lần"]
+  q1 -- "Có" --> p1["Phiên admin: access 10 phút,<br/>idle timeout 30 phút"]
+  p1 --> d1["Admin Dashboard: thống kê tổng hợp"]
+  d1 --> u1["Quản lý người dùng"]
+  d1 --> c1["Danh mục mặc định / Mẫu mẹo / Thông báo"]
+  u1 --> q2{"Hành động"}
+  q2 -- "Vô hiệu hóa" --> a1["status = disabled<br/>+ thu hồi mọi refresh token"]
+  q2 -- "Kích hoạt lại" --> a2["status = active"]
+  q2 -- "Reset mật khẩu" --> a3["Gửi link reset tới email user<br/>(admin KHÔNG đặt mật khẩu hộ)"]
+  a1 --> lg["Ghi audit_logs (actor, action, target, IP)"]
+  a2 --> lg
+  a3 --> lg
+  c1 --> lg

@@ -1,0 +1,34 @@
+sequenceDiagram
+  autonumber
+  participant FE as React SPA
+  participant C as AI Controller
+  participant S as Categorizer Service
+  participant M as Cache bộ nhớ (LRU)
+  participant DB as MySQL
+  participant L as LLM API
+  FE->>C: POST /ai/categorize/suggest {description, amount, type}
+  C->>S: suggest()
+  S->>S: Chuẩn hóa → merchant_key ("campus cafe")
+  S->>DB: Tầng 1 – Luật học từ user (ai_category_rules)
+  alt Khớp luật cá nhân
+    S-->>C: category, confidence 0.95, source = user_rule
+  else Không khớp
+    S->>S: Tầng 2 – Từ điển từ khóa toàn cục (cafe, grab, netflix...)
+    alt Khớp từ khóa
+      S-->>C: category, confidence 0.75, source = keyword
+    else Không khớp và user opt-in AI
+      S->>M: Tra cache theo hash(merchant_key + danh sách danh mục)
+      alt Cache hit
+        M-->>S: Kết quả đã lưu
+      else Cache miss
+        S->>S: Làm sạch PII (email, SĐT, số tài khoản)
+        S->>L: Prompt + JSON schema (chỉ mô tả + tên danh mục), timeout 3s
+        L-->>S: category, confidence
+        S->>S: Kiểm tra category thuộc danh sách hợp lệ
+        S->>M: Lưu cache (TTL 7 ngày)
+      end
+      S-->>C: category, confidence, source = llm
+    end
+  end
+  C-->>FE: 200 gợi ý (hoặc rỗng nếu lỗi/timeout – không chặn người dùng)
+  Note over FE,DB: Khi người dùng sửa danh mục → POST /ai/feedback → upsert ai_category_rules (hit_count++)

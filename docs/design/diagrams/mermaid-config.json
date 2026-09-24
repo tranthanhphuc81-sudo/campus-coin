@@ -1,0 +1,4 @@
+{"theme":"base","themeVariables":{"fontFamily":"Liberation Sans, DejaVu Sans, sans-serif","fontSize":"15px","primaryColor":"#EAF1FB","primaryBorderColor":"#2E5A8C","primaryTextColor":"#1B2A41","lineColor":"#2E5A8C","secondaryColor":"#F4F8FD","tertiaryColor":"#F7FAFE","clusterBkg":"#F4F8FD","clusterBorder":"#9DB5D6","edgeLabelBackground":"#FFF3DC","actorBkg":"#EAF1FB","actorBorder":"#2E5A8C","actorTextColor":"#1B2A41","signalColor":"#1B2A41","signalTextColor":"#1B2A41","labelBoxBkgColor":"#EAF1FB","labelBoxBorderColor":"#2E5A8C","noteBkgColor":"#FFF7D6","noteBorderColor":"#D9B44A","sequenceNumberColor":"#FFFFFF","activationBkgColor":"#EAF1FB"},
+"flowchart":{"curve":"basis","padding":14,"nodeSpacing":40,"rankSpacing":50},
+"sequence":{"mirrorActors":false,"actorMargin":70,"messageMargin":32,"boxMargin":8,"noteMargin":10,"useMaxWidth":false},
+"gantt":{"fontSize":14,"barHeight":22,"barGap":6,"leftPadding":170,"sectionFontSize":14}}

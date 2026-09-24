@@ -1,0 +1,30 @@
+sequenceDiagram
+  autonumber
+  actor U as Người dùng
+  participant FE as React SPA
+  participant API as API Server
+  participant DB as MySQL
+  U->>FE: Email + mật khẩu
+  FE->>API: POST /auth/login
+  API->>API: Kiểm tra rate limit (IP + email, bộ nhớ trong)
+  API->>DB: Lấy user, kiểm tra status và locked_until
+  API->>API: argon2.verify(password_hash)
+  alt Sai mật khẩu
+    API->>DB: failed_login_count++ (≥5 thì khóa 15 phút)
+    API-->>FE: 401 "Email hoặc mật khẩu không đúng"
+  else Đúng
+    API->>DB: Reset bộ đếm, lưu refresh token (hash, family_id)
+    API-->>FE: 200 access token (15 phút) + Set-Cookie refresh (HttpOnly, Secure, SameSite=Strict)
+  end
+  Note over FE: Access token chỉ giữ trong bộ nhớ, không dùng localStorage
+  FE->>API: GET /transactions (Authorization: Bearer)
+  API-->>FE: 200 dữ liệu
+  FE->>API: Access token hết hạn → POST /auth/refresh (cookie)
+  API->>DB: Tìm token hash
+  alt Token đã bị dùng lại (reuse)
+    API->>DB: Thu hồi toàn bộ family, ghi audit log
+    API-->>FE: 401 – buộc đăng nhập lại
+  else Hợp lệ
+    API->>DB: Xoay vòng: thu hồi token cũ, cấp token mới
+    API-->>FE: 200 access token mới + cookie mới
+  end

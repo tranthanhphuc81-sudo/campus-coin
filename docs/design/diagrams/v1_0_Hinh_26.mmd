@@ -1,0 +1,24 @@
+flowchart TB
+  subgraph L1["Lớp 1 – Biên mạng"]
+    direction LR
+    n1["HTTPS/TLS 1.2+ (Let's Encrypt), HSTS"] --- n2["Chỉ mở cổng 80/443,<br/>SSH bằng key"]
+  end
+  subgraph L2["Lớp 2 – Gateway"]
+    direction LR
+    g1["Nginx + express-rate-limit,<br/>body size 2MB"] --- g2["Security headers (helmet):<br/>CSP, X-Frame-Options, nosniff"]
+  end
+  subgraph L3["Lớp 3 – Ứng dụng"]
+    direction LR
+    a1["AuthN: Argon2id, JWT 15',<br/>refresh rotation"] --- a2["AuthZ: RBAC + kiểm tra<br/>sở hữu"] --- a3["Validate Zod, ORM<br/>tham số hóa"] --- a4["CSRF: SameSite=Strict<br/>+ Origin check"]
+  end
+  subgraph L4["Lớp 4 – Dữ liệu"]
+    direction LR
+    d1["MySQL không mở cổng<br/>ra ngoài"] --- d2["Mật khẩu & token<br/>chỉ lưu dạng băm"] --- d3["Backup hằng ngày<br/>(mysqldump)"]
+  end
+  subgraph L5["Lớp 5 – Giám sát"]
+    direction LR
+    m1["Audit log"] --- m2["Sentry + UptimeRobot"]
+  end
+  L1 --> L2 --> L3 --> L4
+  L3 -.-> L5
+  L4 -.-> L5

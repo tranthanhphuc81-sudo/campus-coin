@@ -1,0 +1,26 @@
+sequenceDiagram
+  autonumber
+  actor SV as Sinh viên
+  participant FE as React SPA
+  participant API as API Server
+  participant DB as MySQL
+  participant SMTP as SMTP
+  SV->>FE: Nhập họ tên, email, mật khẩu
+  FE->>FE: Validate Zod (độ dài, định dạng, độ mạnh)
+  FE->>API: POST /auth/register
+  API->>API: Rate limit 5 lần/giờ/IP + chuẩn hóa email
+  API->>DB: Kiểm tra email tồn tại
+  alt Email đã tồn tại
+    API-->>FE: 202 Accepted (thông điệp chung, chống dò email)
+  else Email mới
+    API->>API: Băm mật khẩu Argon2id
+    API->>DB: INSERT user (status = pending) + seed danh mục
+    API->>DB: INSERT auth_token (SHA-256 của token, hết hạn 24h)
+    API->>SMTP: Gửi link /verify-email?token=... (Nodemailer, không chặn phản hồi)
+    API-->>FE: 202 Accepted
+  end
+  SV->>FE: Nhấn link trong email
+  FE->>API: POST /auth/verify-email
+  API->>DB: Tìm token hash, kiểm tra hạn và used_at
+  API->>DB: status = active, used_at = now()
+  API-->>FE: 200 OK – chuyển tới trang đăng nhập

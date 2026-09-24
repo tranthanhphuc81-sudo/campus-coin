@@ -1,0 +1,14 @@
+flowchart TB
+  dev["Dev push / Pull Request"] --> CI
+  subgraph CI["GitHub Actions – CI (mỗi PR)"]
+    direction LR
+    c1["npm ci"] --> c2["ESLint + tsc --noEmit"] --> c3["Unit + Integration test<br/>Vitest · Supertest · MySQL service"] --> c4["npm audit"]
+  end
+  CI -- "Merge vào main" --> CD
+  subgraph CD["CD – Triển khai"]
+    direction LR
+    d1["Build Docker images"] --> d2["Backup DB →<br/>prisma migrate deploy"] --> d3["docker compose up -d<br/>trên VPS"]
+  end
+  CD --> d4{"Smoke test<br/>/health OK?"}
+  d4 -- "Có" --> ok(["Production ✔"])
+  d4 -- "Không" --> rb["Rollback về image trước"]

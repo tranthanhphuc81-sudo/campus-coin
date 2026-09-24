@@ -1,0 +1,18 @@
+sequenceDiagram
+  autonumber
+  actor SV as Sinh viên
+  participant FE as React SPA
+  participant API as Report API
+  participant SMTP as SMTP
+  SV->>FE: Chọn tháng + bộ lọc → "Xuất PDF"
+  FE->>API: GET /reports/monthly/export?month=2026-09&format=pdf
+  API->>API: Kiểm tra quyền (chỉ dữ liệu của chính user)
+  API->>API: Tổng hợp số liệu + render biểu đồ (chart image server-side)
+  API->>API: Sinh PDF bằng pdfmake (font Roboto hỗ trợ tiếng Việt)
+  API-->>FE: 200 application/pdf (Content-Disposition: attachment)
+  Note over FE: Xuất ảnh PNG thực hiện phía client (html-to-image)
+  SV->>FE: "Chia sẻ qua email" + nhập email nhận
+  FE->>API: POST /reports/monthly/share {month, toEmail}
+  API->>API: Rate limit 5 email/ngày, kiểm tra định dạng email
+  API->>SMTP: Gửi email đính kèm PDF (không chứa link công khai tới dữ liệu)
+  API-->>FE: 200 Đã gửi (lỗi SMTP → báo người dùng thử lại)

@@ -1,0 +1,21 @@
+flowchart LR
+  U["👤 Người dùng<br/>Trình duyệt"] -- "HTTPS 443" --> WEB
+  subgraph VPS["VPS Ubuntu 24.04 LTS – Docker Compose (chỉ mở 80/443 + SSH key)"]
+    direction LR
+    WEB["web – Nginx<br/>SPA tĩnh · reverse proxy /api<br/>TLS Let's Encrypt"]
+    API["api – Node.js 24 LTS<br/>Express 5 REST API<br/>node-cron (tác vụ định kỳ)"]
+    DB[("mysql:8.4 LTS<br/>volume dữ liệu<br/>không mở cổng ra ngoài")]
+    WEB --> API
+    API -- "Prisma" --> DB
+  end
+  subgraph EXT["Dịch vụ bên ngoài"]
+    direction TB
+    LLM["🤖 LLM API"]
+    MAIL["✉️ Dịch vụ SMTP"]
+    SEN["📈 Sentry"]
+    BK["🗄️ Bản sao lưu DB"]
+  end
+  API -- "HTTPS" --> LLM
+  API -- "SMTP TLS" --> MAIL
+  API -. "báo lỗi" .-> SEN
+  DB -. "mysqldump hằng ngày" .-> BK

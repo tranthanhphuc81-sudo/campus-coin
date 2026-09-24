@@ -1,0 +1,8 @@
+{
+  "name": "campus-coin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prompts:build": "node tools/prompt-kit/build.mjs"
+  }
+}

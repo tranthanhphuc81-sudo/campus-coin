@@ -1,0 +1,1329 @@
+[
+  {
+    "id": "P1.1",
+    "name": "p1-1-init-monorepo",
+    "title": "Khởi tạo monorepo",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Tạo nhiều file cấu hình liên quan nhau (workspaces, tsconfig, eslint, prettier) cần nhất quán.",
+    "phase": 1,
+    "refs": [],
+    "attachNotes": [],
+    "inputs": [],
+    "body": "package.json gốc đã có sẵn (chứa script \"prompts:build\") và các thư mục docs/, tools/, .github/, .claude/ đã tồn tại – GIỮ NGUYÊN chúng, chỉ bổ sung.\nKhởi tạo monorepo npm workspaces với các package: api, web, packages/shared.\nYêu cầu:\n- package.json gốc: workspaces, script chung: dev (chạy song song api + web), lint, typecheck, test, format.\n- tsconfig.base.json strict (strict, noUncheckedIndexedAccess, exactOptionalPropertyTypes: false), mỗi package kế thừa.\n- ESLint flat config (typescript-eslint, eslint-plugin-react-hooks, eslint-plugin-security cho api), Prettier.\n- packages/shared: build bằng tsc, export schema Zod và type; cả api và web import được qua \"@campus-coin/shared\".\n- api: Express 5 + TypeScript, chạy dev bằng tsx watch; build ra dist.\n- web: Vite + React 19 + TypeScript; alias \"@/...\" trỏ src.\n- .gitignore, .editorconfig, .nvmrc (Node 24), .env.example ở gốc (để trống giá trị, có chú thích từng biến).\nLiệt kê lệnh để tôi chạy kiểm tra sau khi tạo xong.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P1.2",
+    "name": "p1-2-dev-docker",
+    "title": "Docker Compose cho môi trường dev",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "Cấu hình Compose chuẩn, ít rủi ro.",
+    "phase": 1,
+    "refs": [],
+    "attachNotes": [],
+    "inputs": [],
+    "body": "Tạo docker-compose.dev.yml cho môi trường phát triển:\n- mysql:8.4 với volume dữ liệu, charset utf8mb4 / collation utf8mb4_0900_ai_ci, healthcheck bằng mysqladmin ping, cổng 3306 chỉ bind 127.0.0.1.\n- mailpit (axllent/mailpit) để bắt email khi dev: SMTP 1025, UI 8025.\n- Không chứa api/web (dev chạy trực tiếp bằng npm run dev).\nThêm vào .env.example các biến: DATABASE_URL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM.\nViết thêm script npm \"db:up\" và \"db:down\" ở package.json gốc.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P1.3",
+    "name": "p1-3-env-config",
+    "title": "Nạp và kiểm tra biến môi trường (fail fast)",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "Mẫu quen thuộc: parse process.env bằng Zod.",
+    "phase": 1,
+    "refs": [
+      [
+        "design",
+        "11-trien-khai-van-hanh.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 11.3 Cấu hình môi trường"
+    ],
+    "inputs": [],
+    "body": "Tạo api/src/config/env.ts:\n- Dùng Zod parse process.env (dotenv khi dev). Thiếu biến bắt buộc → in danh sách biến lỗi và process.exit(1).\n- Nhóm biến: APP (NODE_ENV, PORT, APP_URL, CORS_ORIGINS dạng danh sách phân tách dấu phẩy), DATABASE_URL, JWT (JWT_PRIVATE_KEY, JWT_PUBLIC_KEY dạng PEM, JWT_KID, ACCESS_TOKEN_TTL mặc định 900 giây, REFRESH_TOKEN_TTL mặc định 30 ngày), IP_HASH_SECRET, SMTP_*, MAIL_FROM, AI_PROVIDER (gemini|openai|none), AI_API_KEY (tùy chọn), AI_MODEL, AI_TIMEOUT_MS mặc định 3000, AI_DAILY_QUOTA mặc định 200, SENTRY_DSN (tùy chọn).\n- Export object config đã được type.\n- Thêm script \"keys:generate\" sinh cặp khóa EdDSA (Ed25519) bằng jose, in ra dạng PEM để dán vào .env.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P1.4",
+    "name": "p1-4-express-skeleton",
+    "title": "Khung Express, middleware pipeline, lỗi chuẩn RFC 9457",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Nhiều file phụ thuộc thứ tự (app, middleware, error handler, logger) và là xương sống cho mọi module sau.",
+    "phase": 1,
+    "refs": [
+      [
+        "design",
+        "04-kien-truc-he-thong.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "design",
+        "09-bao-mat.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 4.2 Kiến trúc Backend, 7.1 Quy ước API, 7.2 Định dạng lỗi chuẩn, 9.11 Header bảo mật"
+    ],
+    "inputs": [],
+    "body": "Tạo khung backend:\n1. api/src/app.ts: tạo Express app, gắn middleware theo THỨ TỰ: requestId (sinh UUID, đặt header X-Request-Id) → pino-http (redact: password, token, authorization, cookie) → helmet (CSP cho phép domain Tawk.to) → cors (allowlist từ config, credentials: true) → express.json({limit: '100kb'}) → cookie-parser → rate limit toàn cục (300 req/phút theo userId nếu có, ngược lại theo IP) → router /api/v1 → notFound → errorHandler.\n2. api/src/lib/problem.ts: class AppError(status, type, title, detail?, errors?) và các helper: badRequest, unauthenticated, forbidden, notFound, conflict, versionMismatch, validationFailed(errors), rateLimited, payloadTooLarge.\n3. api/src/middlewares/errorHandler.ts: chuyển AppError, ZodError (→ 422 kèm errors[] theo field), lỗi Prisma P2002 (→ 409), P2025 (→ 404) và lỗi khác (→ 500, không lộ stack ở production) thành Problem Details.\n4. api/src/middlewares/validate.ts: validate({body?, query?, params?}) dùng Zod, gán dữ liệu đã parse vào req.\n5. api/src/server.ts: khởi động, graceful shutdown (SIGTERM/SIGINT: ngừng nhận request, chờ tối đa 10 giây, đóng Prisma).\n6. Route GET /api/v1/health/live và /health/ready (ready kiểm tra DB bằng SELECT 1).\nExpress 5 tự bắt lỗi async – không cần wrapper asyncHandler. Viết 3 test Supertest: health live, route không tồn tại trả 404 Problem Details, body sai JSON trả 400.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P2.1-A",
+    "name": "p2-1a-db-schema-decide",
+    "title": "Chốt thiết kế Prisma schema cho MySQL",
+    "tier": "🔴",
+    "tierName": "Cao cấp/suy luận",
+    "why": "Sai schema thì sửa rất đắt về sau. Có nhiều điểm Prisma không biểu diễn được (CHECK, cột sinh, UUID v7) cần quyết định có chủ đích.",
+    "phase": 2,
+    "refs": [
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ]
+    ],
+    "attachNotes": [
+      "toàn bộ chương 6 – Thiết kế cơ sở dữ liệu"
+    ],
+    "inputs": [],
+    "body": "KHÔNG VIẾT CODE. Hãy đóng vai kiến trúc sư dữ liệu và ra quyết định cho các vấn đề sau, mỗi vấn đề nêu 2–3 phương án, ưu/nhược điểm, và CHỐT một phương án kèm lý do:\n\n1. UUID v7 dạng CHAR(36): sinh ở ứng dụng (thư viện nào) hay DB? Ảnh hưởng tới Prisma @default.\n2. Bảng categories cần UNIQUE(owner_key, name, type) với owner_key = COALESCE(user_id,'SYSTEM') là cột sinh. Prisma không hỗ trợ cột sinh. Phương án: (a) cột sinh + unique index viết tay trong migration SQL, khai báo trong Prisma thế nào để migrate không cố xóa nó; (b) bỏ cột sinh, kiểm tra trùng ở service; (c) phương án khác.\n3. CHECK constraint (amount > 0, alert_threshold_pct 50–100, interval_count 1–12, ...): liệt kê ĐẦY ĐỦ các CHECK cần viết tay trong migration theo từ điển dữ liệu.\n4. Kiểu Decimal của Prisma: cách chuyển sang chuỗi \"12.50\" ở tầng API một cách nhất quán (serializer chung hay từng DTO).\n5. Idempotency-Key (mục 7.1 lưu 24 giờ) chưa có bảng trong từ điển dữ liệu: thiết kế bảng idempotency_keys (cột, khóa, TTL, cách dọn).\n6. Xóa mềm (deleted_at) với Prisma: dùng Prisma Client extension để tự lọc hay lọc thủ công ở repository? Rủi ro quên lọc.\n7. Múi giờ: txn_date là DATE theo giờ địa phương người dùng; ranh giới tháng tính theo timezone trong users. Chốt cách tính \"tháng hiện tại\" ở backend.\n8. Prisma relation mode và onDelete cho từng khóa ngoại theo từ điển dữ liệu (CASCADE / RESTRICT / SET NULL).\n\nKết quả trả về dạng một tài liệu ADR (Markdown) có tiêu đề \"ADR-DB-01: Thiết kế schema Prisma cho MySQL\", mỗi quyết định một mục, kết thúc bằng checklist những gì migration SQL phải viết tay.",
+    "adr": "ADR-DB-01",
+    "mode": "agent"
+  },
+  {
+    "id": "P2.1-B",
+    "name": "p2-1b-db-schema-build",
+    "title": "Viết Prisma schema và migration",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Nhiều model, nhiều file (schema, migration SQL chỉnh tay, extension), cần bám sát ADR.",
+    "phase": 2,
+    "refs": [
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ],
+      [
+        "adr",
+        "ADR-DB-01.md"
+      ]
+    ],
+    "attachNotes": [
+      "chương 6 + kết quả ADR-DB-01 từ bước A"
+    ],
+    "inputs": [],
+    "body": "Hiện thực đúng ADR-DB-01:\n1. api/prisma/schema.prisma: đầy đủ các bảng users, refresh_tokens, auth_tokens, categories, transactions, transaction_history, recurring_rules, budgets, insights, tip_templates, user_tips, notifications, bookmarks, ai_category_rules, import_batches, import_rows (nếu ADR có), recent_activity, announcements, audit_logs, idempotency_keys. Dùng @map/@@map để tên bảng/cột snake_case trong DB, camelCase trong code. Khai báo đủ index theo mục 6.4.\n2. Tạo migration đầu bằng: prisma migrate dev --create-only --name init. Sau đó CHỈNH TAY file migration.sql để thêm: toàn bộ CHECK constraint, cột sinh owner_key + unique index (nếu ADR chọn), và mọi thứ ADR liệt kê.\n3. api/src/lib/prisma.ts: PrismaClient singleton + extension theo ADR (xóa mềm, serialize Decimal).\n4. api/src/lib/ids.ts: hàm newId() sinh UUID v7.\n5. Script npm: db:migrate, db:reset, db:studio, db:export-schema (dùng mysqldump --no-data xuất ra /database/campus_coin_schema.sql).\nSau khi xong: liệt kê từng CHECK đã thêm và câu SQL để tôi tự kiểm tra (SHOW CREATE TABLE ...).",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P2.2",
+    "name": "p2-2-db-seed",
+    "title": "Seed dữ liệu khởi tạo",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "Dữ liệu tĩnh theo danh sách có sẵn.",
+    "phase": 2,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 6.5 Dữ liệu khởi tạo, mục 5.3 Danh mục, mục 5.10 Bảng quy tắc mẹo"
+    ],
+    "inputs": [],
+    "body": "Viết api/prisma/seed/base.ts (idempotent – chạy lại không tạo trùng, dùng upsert):\n- Danh mục mặc định theo SRS. Thu: Allowance, Part-time Job, Scholarship, Gift, Other Income. Chi: Food, Transport, Hostel/Rent, Academics, Subscriptions, Entertainment, Miscellaneous. Mỗi danh mục có icon (tên Bootstrap Icons), màu HEX, sort_order.\n- tip_templates cho các quy tắc R0–R6 bằng tiếng Anh (locale = 'en'), dùng biến {category}, {amount}, {percent}, {count}.\n- 1 tài khoản admin lấy email/mật khẩu từ biến môi trường SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD (băm argon2id).\n- Từ điển ~300 từ khóa phân loại tiếng Anh (cafe, coffee, lunch, canteen, pizza, grab, uber, bus, metro, rent, dorm, netflix, spotify, textbook, tuition, stationery, cinema, ...) lưu ở api/src/modules/ai/keywords.ts dạng Map<keyword, categoryName> – file riêng, không đưa vào DB.\nScript: npm run db:seed.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P3.1-A",
+    "name": "p3-1a-auth-decide",
+    "title": "Chốt thiết kế token và phiên",
+    "tier": "🔴",
+    "tierName": "Cao cấp/suy luận",
+    "why": "Đây là phần bảo mật quan trọng nhất; lỗi thiết kế (vd. phát hiện reuse sai khi 2 tab cùng refresh) gây đăng xuất oan hoặc lỗ hổng chiếm phiên.",
+    "phase": 3,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "design",
+        "09-bao-mat.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.1, 6.3.2, 7.3.1, 7.4, 9.5, 9.6"
+    ],
+    "inputs": [],
+    "body": "KHÔNG VIẾT CODE. Hãy chốt thiết kế chi tiết cho hệ thống xác thực, trả lời từng câu:\n1. Access token: thuật toán ký (EdDSA hay RS256), claims (sub, role, sid, iat, exp, kid), TTL 15 phút, nơi lưu phía client (bộ nhớ).\n2. Refresh token: chuỗi ngẫu nhiên 256-bit, lưu SHA-256 trong refresh_tokens; cookie tên gì, thuộc tính (HttpOnly, Secure, SameSite=Strict, Path=/api/v1/auth). Cookie riêng cho admin hay dùng chung?\n3. Xoay vòng + phát hiện dùng lại: thuật toán cụ thể với family_id. XỬ LÝ TRƯỜNG HỢP 2 tab/2 request refresh gần như đồng thời (đề xuất grace window bao nhiêu giây, trả về gì cho request thứ hai) để không bị coi nhầm là tấn công.\n4. Khóa tài khoản: failed_login_count, locked_until 15 phút sau 5 lần sai; chống dò email (thông điệp chung + vẫn chạy argon2 với hash giả khi email không tồn tại).\n5. Xác minh email và reset mật khẩu: định dạng token, TTL (24 giờ / 30 phút), dùng một lần, vô hiệu token cũ khi tạo mới; đổi mật khẩu → thu hồi mọi refresh token.\n6. Admin: /admin/auth/login chỉ nhận role=admin, TTL access 10 phút, idle timeout 30 phút – cài đặt thế nào không cần MFA.\n7. CSRF: vì refresh dùng cookie, cần kiểm tra Origin/Referer ở /auth/refresh và /auth/logout – mô tả cách làm.\n8. Tham số argon2id (memoryCost, timeCost, parallelism) hợp lý cho VPS 2 vCPU.\n9. Danh sách audit log cần ghi ở luồng xác thực.\nTrả về ADR-AUTH-01 dạng Markdown, kèm sơ đồ trạng thái của một refresh token (active → rotated → revoked) bằng Mermaid.",
+    "adr": "ADR-AUTH-01",
+    "mode": "agent"
+  },
+  {
+    "id": "P3.1-B",
+    "name": "p3-1b-auth-build",
+    "title": "Hiện thực module auth backend",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Module lớn (routes, service, repository, token lib, mailer, rate limit) cần làm đúng ADR đã chốt.",
+    "phase": 3,
+    "refs": [
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "adr",
+        "ADR-AUTH-01.md"
+      ]
+    ],
+    "attachNotes": [
+      "kết quả ADR-AUTH-01, mục 7.3.1, 7.4"
+    ],
+    "inputs": [],
+    "body": "Hiện thực module api/src/modules/auth theo ĐÚNG ADR-AUTH-01:\n- Endpoints: POST /auth/register (202), /auth/verify-email, /auth/resend-verification, /auth/login, /auth/refresh, /auth/logout, /auth/logout-all, /auth/forgot-password (luôn 202), /auth/reset-password, POST /admin/auth/login.\n- api/src/lib/tokens.ts: signAccessToken, verifyAccessToken (jose), generateOpaqueToken, sha256.\n- api/src/middlewares/authenticate.ts (đọc Bearer, gắn req.user = {id, role, sessionId}) và authorize(...roles).\n- api/src/integrations/mailer.ts (Nodemailer, template HTML + text bằng tiếng Anh cho: xác minh email, đặt lại mật khẩu, mật khẩu vừa đổi) – gửi không chặn phản hồi, có retry 3 lần, lỗi thì log.\n- Rate limit riêng theo bảng 7.4 cho login, register, forgot-password, resend-verification (express-rate-limit, keyGenerator theo IP + email).\n- Schema Zod dùng chung đặt ở packages/shared (registerSchema: mật khẩu ≥ 10 ký tự, chặn 1.000 mật khẩu phổ biến nhất – file danh sách riêng).\n- Ghi audit_logs theo ADR.\nTest Supertest bắt buộc: đăng ký → xác minh → đăng nhập; sai mật khẩu 5 lần bị khóa; refresh xoay vòng; dùng lại refresh cũ → thu hồi cả family; 2 refresh đồng thời trong grace window không bị thu hồi; sinh viên gọi /admin/* bị 403; reset mật khẩu thu hồi phiên cũ.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P3.2",
+    "name": "p3-2-profile-sessions",
+    "title": "Hồ sơ người dùng và phiên đăng nhập",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "CRUD đơn giản trên nền auth đã có.",
+    "phase": 3,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.2, 7.3.1 (các endpoint /me)"
+    ],
+    "inputs": [],
+    "body": "Tạo module api/src/modules/me:\n- GET/PATCH /me: cập nhật fullName, academicYear, monthlyAllowanceBaseline, monthlySavingsGoal, currency (USD|VND), timezone (IANA hợp lệ), preferences {theme, fontScale}, aiOptIn. Không cho sửa email, role, status.\n- PATCH /me/password: cần mật khẩu hiện tại; thành công thì thu hồi mọi refresh token trừ phiên hiện tại.\n- GET /me/sessions, DELETE /me/sessions/:id.\n- GET /me/export: trả JSON toàn bộ dữ liệu cá nhân (hồ sơ, danh mục, giao dịch, ngân sách, nhận định).\n- DELETE /me: yêu cầu nhập lại mật khẩu; đặt deleted_at (ân hạn 30 ngày), thu hồi mọi phiên.\nKèm test: không sửa được role qua PATCH /me; đổi mật khẩu sai mật khẩu cũ → 422.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P3.3",
+    "name": "p3-3-web-auth",
+    "title": "Frontend: auth, axios interceptor, route bảo vệ",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Logic refresh đồng thời phía client dễ sai; nhiều file (context, axios, route guard, 6 trang).",
+    "phase": 3,
+    "refs": [
+      [
+        "design",
+        "04-kien-truc-he-thong.md"
+      ],
+      [
+        "design",
+        "08-thiet-ke-giao-dien.md"
+      ],
+      [
+        "adr",
+        "ADR-AUTH-01.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 4.3 Kiến trúc Frontend, 8.1 Sitemap, ADR-AUTH-01"
+    ],
+    "inputs": [],
+    "body": "Xây dựng phần xác thực cho web:\n1. src/lib/api.ts: axios instance baseURL /api/v1, withCredentials. Interceptor request gắn access token từ bộ nhớ. Interceptor response: khi 401 type token-expired → gọi /auth/refresh MỘT LẦN duy nhất dù nhiều request cùng lỗi (dùng một promise dùng chung), xếp các request đang chờ và gửi lại; refresh thất bại → xóa phiên, điều hướng về /login (hoặc /admin/login nếu đang ở khu admin).\n2. src/app/AuthProvider.tsx: lưu token + user trong React Context (KHÔNG localStorage); khi tải trang gọi /auth/refresh để khôi phục phiên.\n3. src/app/ProtectedRoute.tsx theo role.\n4. Trang: Login, Register (có thanh độ mạnh mật khẩu), VerifyEmail (đọc token từ URL), ForgotPassword, ResetPassword, AdminLogin – dùng React Hook Form + zodResolver với schema từ @campus-coin/shared; hiển thị lỗi theo field từ Problem Details errors[].\n5. src/lib/problem.ts: hàm chuyển Problem Details thành lỗi form và toast.\nMọi chuỗi giao diện bằng tiếng Anh, đặt trong src/content/en.ts.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P4.1",
+    "name": "p4-1-categories",
+    "title": "Module danh mục (backend + frontend)",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Có quy tắc nghiệp vụ (reassign khi xóa, không trùng tên theo loại) và cả FE lẫn BE.",
+    "phase": 4,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "adr",
+        "ADR-DB-01.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.3, 6.3.3, 7.3.2 (categories), ADR-DB-01"
+    ],
+    "inputs": [],
+    "body": "Backend api/src/modules/categories:\n- GET /categories?type=income|expense: danh mục mặc định đang hoạt động + danh mục cá nhân của người dùng, sắp theo sortOrder.\n- POST/PATCH /categories: chỉ danh mục cá nhân; tên không trùng trong cùng loại của người dùng và không trùng danh mục mặc định (409 conflict); giới hạn 50 danh mục cá nhân/người dùng.\n- DELETE /categories/:id?reassignTo=: nếu đã có giao dịch thì BẮT BUỘC reassignTo (cùng loại, người dùng sở hữu hoặc mặc định), chuyển giao dịch trong một DB transaction rồi lưu trữ (is_active=false); chưa có giao dịch thì xóa hẳn.\n- Không cho sửa/xóa danh mục mặc định qua API sinh viên.\nFrontend src/features/categories: trang \"Manage My Categories\" với 2 tab Income/Expense, danh sách thẻ có icon và màu, modal thêm/sửa (chọn icon từ danh sách Bootstrap Icons, chọn màu), hộp thoại xóa có chọn danh mục thay thế. Hook TanStack Query: useCategories(type), useCreateCategory... invalidate đúng query key.\nTest: xóa danh mục có giao dịch mà không reassignTo → 422; gán danh mục người khác → 404.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P5.1-A",
+    "name": "p5-1a-transactions-decide",
+    "title": "Chốt thiết kế ghi giao dịch, lịch sử và sự kiện",
+    "tier": "🔴",
+    "tierName": "Cao cấp/suy luận",
+    "why": "Liên quan tính toàn vẹn dữ liệu: khóa lạc quan, lịch sử append-only, idempotency, thứ tự phát sự kiện sau commit.",
+    "phase": 5,
+    "refs": [
+      [
+        "design",
+        "04-kien-truc-he-thong.md"
+      ],
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "adr",
+        "ADR-DB-01.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 4.6, 5.4, 6.3.4, 7.1 (Idempotency, version), ADR-DB-01"
+    ],
+    "inputs": [],
+    "body": "KHÔNG VIẾT CODE. Chốt thiết kế cho:\n1. Luồng tạo/sửa/xóa mềm/khôi phục giao dịch: các bước trong MỘT DB transaction (ghi transactions + transaction_history), và thời điểm phát sự kiện nội bộ (chỉ SAU commit). Nếu handler lỗi thì sao?\n2. Khóa lạc quan với cột version: câu UPDATE cụ thể (WHERE id AND user_id AND version), cách trả 409 version-mismatch kèm bản mới nhất.\n3. Nội dung snapshot và changed_fields trong transaction_history (định dạng JSON).\n4. Idempotency-Key cho POST /transactions: lưu gì, trả gì khi gửi lặp (cùng key, khác body → 422).\n5. Chuẩn hóa merchant_key (quy tắc mục 5.6) – đặt ở đâu để dùng chung cho AI, trùng lặp, CSV.\n6. Event bus nội bộ: interface TypedEventEmitter, danh sách sự kiện (transaction.created | updated | deleted | restored) và payload; handler chạy tuần tự hay song song; cách bảo đảm lỗi handler không làm hỏng response.\n7. Bộ lọc danh sách (mục 5.4 BR-TX-08): cách dựng where của Prisma an toàn; tìm theo từ khóa mô tả dùng LIKE hay FULLTEXT (với quy mô A-02).\nTrả về ADR-TX-01 dạng Markdown.",
+    "adr": "ADR-TX-01",
+    "mode": "agent"
+  },
+  {
+    "id": "P5.1-B",
+    "name": "p5-1b-transactions-build",
+    "title": "Hiện thực module giao dịch backend",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Module lớn nhất của nghiệp vụ lõi, nhiều endpoint và test.",
+    "phase": 5,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "adr",
+        "ADR-TX-01.md"
+      ]
+    ],
+    "attachNotes": [
+      "ADR-TX-01, mục 5.4, 7.3.2 (transactions)"
+    ],
+    "inputs": [],
+    "body": "Hiện thực api/src/modules/transactions và api/src/events theo ADR-TX-01:\n- GET /transactions (lọc from, to, type, categoryId nhiều giá trị, q, minAmount, maxAmount, sort; phân trang page/limit ≤ 100, trả meta).\n- GET /transactions/:id (ghi recent_activity 'viewed', giữ 20 bản ghi/người).\n- POST /transactions (Idempotency-Key, tùy chọn recurring: tạo recurring_rule kèm).\n- PATCH /transactions/:id (yêu cầu version; ghi recent_activity 'edited').\n- DELETE /transactions/:id (xóa mềm), POST /transactions/:id/restore (trong 30 ngày), GET /transactions/:id/history, GET /transactions/trash.\n- Validate BR-TX-01..04: số tiền > 0, tối đa 2 chữ số thập phân (VND: 0), ngày trong khoảng cho phép theo timezone người dùng, danh mục cùng loại và thuộc người dùng hoặc mặc định.\n- Event bus api/src/events/bus.ts + đăng ký handler rỗng (BudgetAlert, Anomaly, AiLearning sẽ làm ở giai đoạn sau).\nTest bắt buộc: người A không đọc/sửa/xóa được giao dịch người B (404); sửa với version cũ → 409; gửi lặp cùng Idempotency-Key không tạo 2 giao dịch; xóa rồi khôi phục có đủ 3 dòng lịch sử; ngày tương lai quá 1 ngày → 422.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P5.2",
+    "name": "p5-2-web-transactions",
+    "title": "Frontend: danh sách giao dịch, thêm nhanh, thùng rác, lịch sử",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Nhiều component tương tác (bảng lọc, modal thêm nhanh, phím tắt, lịch sử) và đồng bộ URL query.",
+    "phase": 5,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "08-thiet-ke-giao-dien.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.4.1, 8.3 (màn hình giao dịch), 8.6 Trạng thái giao diện, 5.15"
+    ],
+    "inputs": [],
+    "body": "Xây dựng src/features/transactions:\n1. QuickAddModal: loại Income/Expense (mặc định Expense), số tiền (ô nhập định dạng theo tiền tệ người dùng, số dạng tabular), ngày (mặc định hôm nay), mô tả, danh mục (CategorySelect – để sẵn chỗ cho chip \"AI suggestion\" ở Giai đoạn 9), công tắc \"Repeat\" mở thêm các trường định kỳ. Phím tắt: N mở, Enter lưu, Esc đóng. Mở được từ navbar, dashboard và nút nổi (FAB) trên mobile.\n2. Trang Giao dịch: bộ lọc (khoảng ngày có preset, loại, nhiều danh mục, khoảng tiền, từ khóa) đồng bộ lên URL query; bảng trên desktop, danh sách thẻ trên mobile; phân trang; sửa inline qua modal (gửi version, xử lý 409 bằng hộp thoại \"This transaction was changed elsewhere – reload?\").\n3. Trang Trash (thùng rác): khôi phục trong 30 ngày.\n4. Drawer Lịch sử thay đổi của một giao dịch (hiển thị trường nào đổi từ gì sang gì).\n5. Trạng thái rỗng có hướng dẫn \"Log your first transaction\", skeleton khi tải, toast khi lưu.\nMọi số tiền hiển thị qua một hàm formatMoney(amountString, currency) (định dạng en-US: $1,234.50; VND không có phần thập phân) duy nhất ở src/lib/money.ts.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P6.1",
+    "name": "p6-1-recurring-cron",
+    "title": "Lập lịch node-cron và sinh giao dịch định kỳ",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Có logic ngày tháng dễ sai (ngày 31, catch-up, múi giờ) và idempotency; nên để mô hình agentic viết kèm test đầy đủ.",
+    "phase": 6,
+    "refs": [
+      [
+        "design",
+        "04-kien-truc-he-thong.md"
+      ],
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 4.5 (bảng tác vụ nền), 5.4.2, 6.3.5 (recurring_rules)"
+    ],
+    "inputs": [],
+    "body": "1. api/src/jobs/scheduler.ts: đăng ký các job node-cron với timezone 'Asia/Ho_Chi_Minh', chỉ chạy khi ENABLE_CRON=true (để test không chạy cron). Mỗi job bọc try/catch, log thời gian chạy, không để lỗi làm sập process. Có cờ chống chạy chồng (nếu lượt trước chưa xong thì bỏ qua lượt này).\n2. api/src/jobs/recurring.ts – chạy 00:05 hằng ngày: lấy recurring_rules is_active với next_run_date ≤ hôm nay; với mỗi quy tắc sinh giao dịch source='recurring' cho TỪNG kỳ đến hạn (catch-up tối đa 12 kỳ), recurring_period dạng '2026-09' (tháng) / '2026-W38' (tuần) / '2026' (năm); dựa vào UNIQUE(recurring_rule_id, recurring_period) để không bao giờ sinh trùng (bắt lỗi P2002 và bỏ qua). Ngày 29–31 ở tháng thiếu ngày → ngày cuối tháng. Vượt end_date → is_active=false. Phát sự kiện transaction.created cho mỗi giao dịch sinh ra.\n3. api/src/jobs/cleanup.ts – 03:00 hằng ngày: xóa token hết hạn > 7 ngày, bản nháp import > 24 giờ, idempotency_keys > 24 giờ, giao dịch xóa mềm > 30 ngày (ẩn danh hóa lịch sử), tài khoản yêu cầu xóa > 30 ngày.\n4. Module api/src/modules/recurring-rules: GET/POST/PATCH/DELETE /recurring-rules (sửa chỉ áp dụng kỳ tương lai; tạm dừng/tiếp tục).\n5. Hàm thuần computeNextRunDate(rule, fromDate) tách riêng để unit test.\nUnit test: quy tắc ngày 31 qua tháng 2 (năm nhuận và không nhuận); chạy job 2 lần cùng ngày không sinh trùng; hệ thống ngừng 3 tháng → catch-up đủ 3 kỳ; weekly interval 2.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P7.1",
+    "name": "p7-1-budgets-alerts",
+    "title": "Ngân sách, handler cảnh báo và thông báo",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Kết hợp module budgets, handler sự kiện, bảng notifications và FE chuông thông báo.",
+    "phase": 7,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.11, 6.3.5 (budgets), 6.3.7 (notifications), 7.3.3 (budgets, notifications), Hình 21"
+    ],
+    "inputs": [],
+    "body": "Backend:\n- api/src/modules/budgets: GET /budgets?month= (kèm spent, percent, level: ok|near|exceeded), PUT /budgets (upsert hàng loạt cho một tháng, chỉ danh mục chi), POST /budgets/copy-previous, DELETE /budgets/:id.\n- api/src/events/handlers/budgetAlert.ts: khi có giao dịch CHI created/updated/deleted/restored → tính spent tháng của danh mục; nếu ≥ ngưỡng → NEAR_LIMIT, ≥ 100% → EXCEEDED; tạo notification với dedupe_key = `budget:{budgetId}:{level}:{month}` (UNIQUE) để chỉ gửi một lần; nếu spent giảm xuống dưới ngưỡng thì xóa dedupe_key tương ứng để cho phép cảnh báo lại.\n- api/src/modules/notifications: GET /notifications (phân trang, unread count), POST /notifications/:id/read, POST /notifications/read-all.\nFrontend:\n- Trang Ngân sách: chọn tháng, bảng danh mục chi với ô nhập hạn mức và ngưỡng (50–100%), progress bar xanh < 80% / vàng 80–99% / đỏ ≥ 100% (kèm chữ, không chỉ dựa vào màu), nút \"Copy last month\".\n- NotificationBell trên navbar: badge số chưa đọc, dropdown danh sách; refetchInterval 60 giây và invalidate ngay sau mutation giao dịch; toast khi có thông báo ngân sách mới.\nTest: vượt ngưỡng 2 lần trong tháng chỉ tạo 1 thông báo; xóa giao dịch cho giảm dưới ngưỡng rồi vượt lại → tạo thông báo mới.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P8.1",
+    "name": "p8-1-analytics-api",
+    "title": "Truy vấn tổng hợp và API dashboard/báo cáo",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Nhiều truy vấn SQL tổng hợp phải đúng múi giờ và dùng đúng chỉ mục.",
+    "phase": 8,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "design",
+        "10-hieu-nang-mo-rong.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.7 (bảng widget), 5.8, 6.4 Chỉ mục, 7.3.3 (dashboard, reports), 10.1"
+    ],
+    "inputs": [],
+    "body": "Tạo api/src/modules/analytics với repository dùng Prisma $queryRaw (tham số hóa bằng tagged template, KHÔNG nối chuỗi) cho các truy vấn tổng hợp:\n- GET /dashboard/summary?month=YYYY-MM: greeting data, totals {income, expense, net, vsPrevMonthPct}, topCategory, budgetVsActual[], categoryBreakdown[], trend6Months[], savingsGoalProgress, latestInsight (tóm tắt), recentActivity[], activeAnnouncements[]. Tips để trống (Giai đoạn 12 bổ sung).\n- GET /reports/category-breakdown?from&to&type&categoryId: tổng, tỷ trọng %, số giao dịch, so sánh kỳ trước cùng độ dài.\n- GET /reports/income-vs-expense?months=6: thu, chi, tiết kiệm ròng từng tháng (tháng không có dữ liệu vẫn trả 0).\n- GET /reports/daily-weekly?month=: theo ngày và theo tuần ISO, kèm trung bình ngày.\nYêu cầu: ranh giới tháng tính theo timezone người dùng; loại giao dịch deleted_at; số tiền trả dạng chuỗi; mỗi truy vấn ghi chú chỉ mục nào nó dùng. Dùng EXPLAIN để kiểm tra và dán kết quả EXPLAIN của 2 truy vấn nặng nhất vào phần giải thích.\nTest với dữ liệu mẫu: tổng theo tháng đúng khi có giao dịch ngày 31 lúc 23:30 giờ Việt Nam.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P8.2",
+    "name": "p8-2-web-dashboard-reports",
+    "title": "Frontend dashboard và báo cáo",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Nhiều widget và biểu đồ, lazy-load Chart.js, dark mode cho biểu đồ.",
+    "phase": 8,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "08-thiet-ke-giao-dien.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.7, 5.8, 8.2 Design tokens, 8.3, 8.4 Responsive"
+    ],
+    "inputs": [],
+    "body": "1. src/components/charts: ChartCard, DoughnutChart, GroupedBarChart, LineChart – bọc react-chartjs-2, lazy-load Chart.js (React.lazy), bảng màu lấy từ CSS variables để tự đổi theo dark mode, có bảng dữ liệu thay thế ẩn cho trình đọc màn hình (aria).\n2. Trang Dashboard theo bảng widget mục 5.7: lưới Bootstrap responsive (1 cột mobile, 2 cột tablet, 3 cột desktop); skeleton riêng từng widget; Error Boundary từng widget.\n3. Trang Báo cáo có 4 tab: Theo danh mục, Thu vs Chi 6 tháng, Ngày/Tuần tháng này, Dự báo (để placeholder, làm ở Giai đoạn 13). Bộ lọc dùng chung đồng bộ URL query. Nút \"Export PNG\" dùng html-to-image chụp vùng báo cáo.\n4. Breadcrumbs sinh tự động từ cấu hình route (handle.crumb của React Router).",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P8.3-A",
+    "name": "p8-3a-pdf-decide",
+    "title": "Chốt cách sinh PDF có biểu đồ",
+    "tier": "🔴",
+    "tierName": "Cao cấp/suy luận",
+    "why": "Chọn sai (vd. thư viện cần canvas native) sẽ vỡ build Docker alpine và tốn thời gian gỡ lỗi.",
+    "phase": 8,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "09-bao-mat.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.8, ADR-09 (pdfmake), mục 9.10"
+    ],
+    "inputs": [],
+    "body": "KHÔNG VIẾT CODE. Báo cáo PDF tháng cần: trang bìa, bảng tổng hợp, biểu đồ (doughnut theo danh mục, cột 6 tháng), top giao dịch, nhận định tháng, ghi chú \"Not financial advice\"; toàn bộ nội dung PDF bằng tiếng Anh nhưng font phải hiển thị đúng tên/mô tả có dấu tiếng Việt do người dùng nhập.\nSo sánh 3 cách đưa biểu đồ vào PDF phía server với pdfmake:\n(a) chartjs-node-canvas (cần thư viện native canvas) – ảnh hưởng image node:24-alpine;\n(b) tự sinh SVG đơn giản (doughnut, cột) bằng hàm TypeScript thuần rồi nhúng vào pdfmake (pdfmake hỗ trợ SVG);\n(c) client gửi ảnh PNG biểu đồ lên khi xuất.\nĐánh giá theo: độ phức tạp, dung lượng image Docker, bảo mật (SRS: không tải file độc hại), độ nhất quán giao diện, thời gian làm trong cuộc thi. Chốt một phương án. Chỉ rõ cách nhúng font Roboto/Noto Sans (có glyph tiếng Việt cho dữ liệu người dùng) vào pdfmake.\nTrả về ADR-PDF-01.",
+    "adr": "ADR-PDF-01",
+    "mode": "agent"
+  },
+  {
+    "id": "P8.3-B",
+    "name": "p8-3b-pdf-build",
+    "title": "Hiện thực xuất PDF và chia sẻ email",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Nhiều file (renderer, biểu đồ, route, mailer) theo quyết định đã chốt.",
+    "phase": 8,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "adr",
+        "ADR-PDF-01.md"
+      ]
+    ],
+    "attachNotes": [
+      "ADR-PDF-01, mục 5.8, 7.3.3 (export, share), 7.4"
+    ],
+    "inputs": [],
+    "body": "- api/src/integrations/pdf: renderMonthlyReport(userId, month) theo ADR-PDF-01, dùng lại truy vấn của module analytics.\n- GET /reports/monthly/export?month=&format=pdf: Content-Disposition attachment, tên file campus-coin-report-YYYY-MM.pdf, chỉ dữ liệu của chính người dùng.\n- POST /reports/monthly/share {month, toEmail}: rate limit 5/ngày/người dùng; gửi PDF đính kèm qua mailer; nội dung email không chứa link công khai tới dữ liệu.\n- Frontend: nút \"Export PDF\" (tải file khi người dùng bấm) và modal \"Share via email\".\nTest: PDF sinh ra > 0 byte và có header %PDF; gọi share lần thứ 6 trong ngày → 429.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P9.1-A",
+    "name": "p9-1a-ai-decide",
+    "title": "Chốt thiết kế AI Adapter và phân loại ba tầng",
+    "tier": "🔴",
+    "tierName": "Cao cấp/suy luận",
+    "why": "Liên quan quyền riêng tư (dữ liệu gửi ra ngoài), chi phí, prompt injection và độ tin cậy; đây cũng là điểm giám khảo hỏi nhiều nhất.",
+    "phase": 9,
+    "refs": [
+      [
+        "design",
+        "03-lua-chon-cong-nghe.md"
+      ],
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "design",
+        "09-bao-mat.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 3.4, 5.6, 9.9 An toàn khi dùng AI, 6.3.7 (ai_category_rules), 7.4"
+    ],
+    "inputs": [],
+    "body": "KHÔNG VIẾT CODE. Chốt thiết kế:\n1. Interface AiProvider chung (categorize, generateInsight) để đổi Gemini ↔ OpenAI ↔ none; cách bật structured output JSON theo schema của từng nhà cung cấp.\n2. Thuật toán chuẩn hóa merchant_key (chữ thường, bỏ dấu – kể cả dấu tiếng Việt nếu người dùng gõ, bỏ số, ký tự đặc biệt, từ dừng) – liệt kê từ dừng tiếng Anh (at, the, from, for, to, ...).\n3. Tầng 1 (luật cá nhân): cách tính confidence (0,95 khi hit_count ≥ 2, 0,8 khi = 1); quy tắc \"luật mới thay luật cũ nếu bị sửa 2 lần liên tiếp\" – cần thêm cột gì?\n4. Tầng 2 (từ khóa): khớp theo token hay substring; xử lý xung đột nhiều từ khóa.\n5. Tầng 3 (LLM): prompt system/user với ranh giới rõ ràng chống prompt injection từ mô tả người dùng; làm sạch PII (regex email, SĐT Việt Nam, số tài khoản/thẻ); chỉ gửi mô tả đã làm sạch + danh sách tên danh mục; loại kết quả không thuộc danh sách; giới hạn confidence ≤ 0,9; timeout 3 giây.\n6. Cache LRU trong bộ nhớ: key, kích thước tối đa, TTL 7 ngày; quota 200 lời gọi LLM/người dùng/ngày – đếm ở đâu khi không có Redis (bảng DB hay bộ nhớ? Chấp nhận mất đếm khi restart không?).\n7. Chỉ gọi LLM khi user.aiOptIn = true; lỗi/timeout trả gợi ý rỗng, không chặn lưu giao dịch.\n8. Cách đo độ chính xác: tỷ lệ ai_accepted / (ai_accepted + ai_overridden) cho admin.\nViết sẵn NGUYÊN VĂN prompt tầng 3 (system + user template) và JSON schema đầu ra. Trả về ADR-AI-01.",
+    "adr": "ADR-AI-01",
+    "mode": "agent"
+  },
+  {
+    "id": "P9.1-B",
+    "name": "p9-1b-ai-build",
+    "title": "Hiện thực phân loại AI backend",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Module nhiều lớp (adapter, 3 tầng, cache, quota, feedback, handler học).",
+    "phase": 9,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "adr",
+        "ADR-AI-01.md"
+      ]
+    ],
+    "attachNotes": [
+      "ADR-AI-01, mục 5.6, 7.3.2 (/ai/*)"
+    ],
+    "inputs": [],
+    "body": "Hiện thực đúng ADR-AI-01:\n- api/src/integrations/ai/{provider.ts, gemini.ts, openai.ts, none.ts, index.ts}: chọn provider theo AI_PROVIDER.\n- api/src/modules/ai/{normalize.ts, keywords.ts, categorizer.service.ts, routes.ts}: POST /ai/categorize/suggest {description, amount, type} → {categoryId, categoryName, confidence, source: user_rule|keyword|llm} hoặc {suggestion: null}; POST /ai/feedback {description, suggestedCategoryId, chosenCategoryId}.\n- api/src/events/handlers/aiLearning.ts: khi giao dịch có category_source user/ai_overridden → upsert ai_category_rules.\n- Rate limit 60 lần/phút/người dùng.\nUnit test: normalize(\"Campus Café #12\") = \"campus cafe\"; tầng 1 thắng tầng 2; LLM trả danh mục không hợp lệ → bị loại; aiOptIn=false không bao giờ gọi provider (mock); PII bị xóa trước khi gửi.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P9.2",
+    "name": "p9-2-web-ai-chip",
+    "title": "Frontend: chip \"AI suggestion\" trong form giao dịch",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "Component nhỏ trên API đã có; logic debounce và hủy request là mẫu quen thuộc.",
+    "phase": 9,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "09-bao-mat.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.6 (phía client), Hình 12"
+    ],
+    "inputs": [],
+    "body": "Cập nhật CategorySelect trong QuickAddModal:\n- Khi mô tả ≥ 3 ký tự và người dùng bật AI: debounce 400 ms gọi /ai/categorize/suggest, hủy request cũ bằng AbortController.\n- confidence ≥ 0,6 → tự điền danh mục + chip \"AI suggestion\" (tooltip giải thích nguồn: \"Your rule\" / \"Keyword\" / \"AI\"); < 0,6 → hiện top gợi ý dạng nút chọn nhanh.\n- Khi lưu: đặt categorySource = ai_accepted nếu giữ nguyên, ai_overridden nếu đổi, user nếu không có gợi ý; gửi kèm aiSuggestedCategoryId, aiConfidence.\n- Lỗi AI không hiện lỗi đỏ, không chặn nút Lưu.\nThêm công tắc \"Enable AI suggestions\" trong trang Hồ sơ kèm đoạn giải thích dữ liệu nào được gửi (theo mục 9.9).",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P10.1",
+    "name": "p10-1-csv-import",
+    "title": "Nhập CSV ba bước (backend + frontend)",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Nhiều ca biên (định dạng ngày, dấu thập phân, BOM, trùng lặp) và luồng 3 bước FE/BE; cần test kỹ.",
+    "phase": 10,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "design",
+        "09-bao-mat.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.5 (bảng định dạng CSV), 9.10 An toàn file, 6.3.7 (import_batches), 7.3.2 (/imports), Hình 15"
+    ],
+    "inputs": [],
+    "body": "Backend api/src/modules/imports (xử lý đồng bộ trong request, không dùng hàng đợi):\n- GET /imports/template: file CSV mẫu (date,amount,type,description,category) có 3 dòng ví dụ.\n- POST /imports (multer memoryStorage, giới hạn 2 MB, chỉ .csv, kiểm tra MIME và nội dung): tính SHA-256 file → trùng UNIQUE(user_id, file_sha256) trả 409; loại BOM; tự nhận dấu phân tách , hoặc ;; parse bằng csv-parse; ≤ 5.000 dòng; validate từng dòng; nhận dạng ngày theo định dạng người dùng chọn (YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY); số tiền chấp nhận \".\" hoặc \",\"; type suy từ dấu âm nếu thiếu; khớp tên danh mục, nếu trống thì phân loại hàng loạt (theo lô 50 mô tả qua categorizer); đánh dấu dòng trùng giao dịch đã có (cùng ngày, số tiền, merchant_key) và mặc định bỏ chọn. Không lưu file gốc. Trả 200 {batchId, preview, errors}.\n- GET /imports/:id, PATCH /imports/:id/rows (sửa danh mục, bỏ chọn dòng), POST /imports/:id/commit (Idempotency-Key; MỘT DB transaction; source='csv_import'; ghi history; phát sự kiện), DELETE /imports/:id.\n- Chống CSV injection khi xuất báo cáo lỗi: tiền tố ' cho ô bắt đầu bằng = + - @.\nFrontend: trang Nhập CSV 3 bước (Tải lên → Xem trước & chỉnh → Kết quả), bảng xem trước có tô màu dòng lỗi/dòng trùng, chọn định dạng ngày, sửa danh mục từng dòng, nút tải báo cáo lỗi.\nTest: file có BOM; file dùng \";\" và số \"4,50\"; dòng thiếu amount báo lỗi đúng số dòng; commit 2 lần cùng Idempotency-Key chỉ nhập 1 lần; file 3 MB → 413.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P11.1-A",
+    "name": "p11-1a-insights-decide",
+    "title": "Chốt thuật toán thống kê và kiểm soát đầu ra LLM",
+    "tier": "🔴",
+    "tierName": "Cao cấp/suy luận",
+    "why": "Thuật toán thống kê và bộ kiểm tra \"chống bịa số\" quyết định độ tin cậy của tính năng; cần suy luận cẩn thận về ca biên.",
+    "phase": 11,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.9.1, 5.9.2, 6.3.6 (insights), Hình 18, Hình 19"
+    ],
+    "inputs": [],
+    "body": "KHÔNG VIẾT CODE. Chốt:\n1. Đặc tả hàm computeMonthStats(userId, month): input, output JSON (dùng làm stats_snapshot), công thức cur, avg3 (bỏ tháng trống, cần ≥ 2 tháng), g, điều kiện flag (g ≥ 25% VÀ chênh lệch tuyệt đối ≥ max(5 đơn vị tiền, 5% trợ cấp cơ sở)), tỷ lệ tiết kiệm, danh mục mới, giao dịch bất thường lớn nhất, top 3 mẫu. Xử lý: trợ cấp cơ sở null, thu = 0, tiền VND.\n2. Lời khuyên hành động: hạn mức tuần = avg3 / 4,33 làm tròn theo tiền tệ; bảng gợi ý thay thế theo danh mục.\n3. Prompt LLM nguyên văn (system + user), JSON schema {summary_text, tip_text}, temperature 0,3, ≤ 120 từ, luôn bằng tiếng Anh.\n4. Bộ kiểm tra đầu ra: parse schema; độ dài; trích mọi con số trong văn bản (cả dạng \"40%\", \"12,50\", \"12.5 USD\") và so khớp với tập số liệu cho phép (sai số làm tròn bao nhiêu); lọc từ khóa cấm (vay, đầu tư, crypto...). Không đạt → template.\n5. Template dự phòng bằng tiếng Anh cho các trường hợp: có mẫu tăng, không có mẫu nào, tiết kiệm tốt.\n6. Trạng thái job (queued → processing → completed/failed), retry 3 lần (2s, 8s, 32s) chỉ khi lỗi mạng/429/timeout; regenerate tối đa 3 lần/tháng.\nTrả về ADR-INSIGHT-01 kèm 3 bộ dữ liệu ví dụ (input stats → output mong đợi) để làm test.",
+    "adr": "ADR-INSIGHT-01",
+    "mode": "agent"
+  },
+  {
+    "id": "P11.1-B",
+    "name": "p11-1b-insights-build",
+    "title": "Hiện thực nhận định (backend + frontend)",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Nhiều phần (stats engine, validator, job cron, API, trang lịch sử) bám theo ADR.",
+    "phase": 11,
+    "refs": [
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "adr",
+        "ADR-INSIGHT-01.md"
+      ]
+    ],
+    "attachNotes": [
+      "ADR-INSIGHT-01, mục 7.3.3 (/insights)"
+    ],
+    "inputs": [],
+    "body": "- api/src/modules/insights/{stats.ts, validator.ts, templates.ts, insight.service.ts, routes.ts}: hiện thực đúng ADR; stats.ts và validator.ts là hàm thuần để unit test.\n- api/src/jobs/insights.ts: node-cron 00:30 ngày 1 hằng tháng cho user active có ≥ 5 giao dịch tháng trước; xử lý tuần tự từng user, lỗi một user không dừng lượt chạy; upsert insights UNIQUE(user_id, month); tạo notification insight_ready.\n- GET /insights, GET /insights/:month, POST /insights/:month/regenerate (≤ 3 lần/tháng, 202).\n- Frontend: trang Nhận định (danh sách theo tháng, chi tiết có các mẫu đã flag dạng thẻ, nhãn \"AI-generated insight – for reference only\", nút \"Regenerate\", nút Bookmark); widget \"Nhận định mới nhất\" trên dashboard.\nUnit test dùng 3 bộ dữ liệu ví dụ trong ADR; test validator bắt được câu \"chi Food tăng 55%\" khi số liệu thật là 40%.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P12.1",
+    "name": "p12-1-tips-engine",
+    "title": "Tips engine R0–R6 (backend + frontend)",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Thuật toán đã được đặc tả rõ trong tài liệu (bảng quy tắc, công thức score) nên không cần bước quyết định riêng, nhưng nhiều quy tắc và test.",
+    "phase": 12,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.10 (bảng quy tắc R0–R6 và công thức), 6.3.6 (tip_templates, user_tips), Hình 20"
+    ],
+    "inputs": [],
+    "body": "Backend api/src/modules/tips:\n- rules/*.ts: mỗi quy tắc R1–R6 là một hàm thuần evaluate(context) → TipCandidate[] {ruleType, categoryId?, impactAmount, variables}. context gồm: chi tiêu tháng này theo danh mục, spent_to_date, số ngày đã qua, avg3, budgets, giao dịch 7 ngày gần nhất, recurring subscriptions, thu tháng này, mục tiêu tiết kiệm, trợ cấp cơ sở.\n- projected(c) chỉ áp dụng từ ngày thứ 5 của tháng. confidence theo số tháng lịch sử (0,5 / 0,75 / 1,0). score = impact × confidence × recency.\n- tips.service.ts: tính lại khi người dùng mở dashboard/trang Mẹo nếu lần tính gần nhất > 10 phút; render nội dung từ tip_templates (escape mọi biến); lưu user_tips; bỏ tip dismissed trong 30 ngày (cùng quy tắc + danh mục); tip pinned luôn đứng đầu.\n- GET /tips, POST /tips/:id/pin | unpin | dismiss. Bổ sung top 3 tips vào /dashboard/summary.\nFrontend: widget Top 3 mẹo trên dashboard (nút Pin / Dismiss / Save), trang Mẹo xem tất cả.\nUnit test từng quy tắc với dữ liệu biên (ngày thứ 4 của tháng không kích hoạt R1/R2; đúng 8 khoản nhỏ kích hoạt R3; 3 subscription kích hoạt R4).",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P13.1",
+    "name": "p13-1-system-intelligence",
+    "title": "Phát hiện bất thường, trùng lặp, dự báo, hoạt động gần đây",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Các thuật toán đã có công thức trong tài liệu; cần hiện thực trong handler sự kiện và API, kèm test thống kê.",
+    "phase": 13,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.14 (bảng tính năng), 7.3.2 (resolve-flag), 7.3.3 (/forecast, /activity)"
+    ],
+    "inputs": [],
+    "body": "1. api/src/events/handlers/anomaly.ts (khi transaction.created/updated):\n   - Bất thường: danh mục có ≥ 5 giao dịch trong 90 ngày; amount > mean + 3σ HOẶC > 3 × median, VÀ > 20% trợ cấp cơ sở → is_anomaly = true + notification \"Unusually large expense – is this correct?\".\n   - Trùng lặp: cùng user, cùng amount và type, cùng danh mục hoặc merchant_key Levenshtein ≤ 2, ngày chênh ≤ 1, tạo cách nhau ≤ 10 phút, không phải recurring → is_possible_duplicate = true + notification.\n2. POST /transactions/:id/resolve-flag {flag: anomaly|duplicate, action: keep|delete}.\n3. GET /forecast/next-month: mỗi danh mục = 0,5·M−1 + 0,3·M−2 + 0,2·M−3 cộng khoản định kỳ đã biết; khoảng ±1σ; < 2 tháng dữ liệu → {insufficientData: true}.\n4. GET /activity/recent (20 bản ghi, đồng bộ đa thiết bị vì lưu server).\n5. Frontend: badge cảnh báo trên dòng giao dịch bị gắn cờ kèm nút \"Keep\" / \"Delete duplicate\"; tab Dự báo trong trang Báo cáo (đường + vùng sai số); widget \"Gần đây\" trên dashboard.\nHàm thống kê (mean, stddev, median, levenshtein, weightedForecast) tách ra api/src/lib/stats.ts và có unit test.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P14.1",
+    "name": "p14-1-bookmarks",
+    "title": "Bookmark và ghi chú",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "CRUD đơn giản.",
+    "phase": 14,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "06-thiet-ke-co-so-du-lieu.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.12, 6.3.7 (bookmarks)"
+    ],
+    "inputs": [],
+    "body": "Backend GET/POST/PATCH/DELETE /bookmarks (targetType: tip | insight | report; targetRef: id tip, tháng nhận định, hoặc chuỗi query bộ lọc báo cáo; note ≤ 500 ký tự; UNIQUE(user, type, ref) → 409).\nFrontend: nút Bookmark dùng chung (BookmarkButton) đặt trên thẻ mẹo, trang nhận định, trang báo cáo (lưu bộ lọc hiện tại); trang \"Saved\" có tab theo loại và ô tìm theo ghi chú; mở bookmark báo cáo sẽ khôi phục đúng bộ lọc.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P14.2-A",
+    "name": "p14-2a-admin-decide",
+    "title": "Chốt phạm vi quyền và quyền riêng tư của admin",
+    "tier": "🔴",
+    "tierName": "Cao cấp/suy luận",
+    "why": "Admin là vai trò đặc quyền; cần chốt rõ admin được thấy gì để không vi phạm yêu cầu \"chỉ chủ sở hữu xem được dữ liệu tài chính\".",
+    "phase": 14,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "design",
+        "09-bao-mat.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 5.13 (bảng chức năng quản trị), 9.6, 9.12, 7.3.4"
+    ],
+    "inputs": [],
+    "body": "KHÔNG VIẾT CODE. Chốt:\n1. Danh sách trường admin được xem ở /admin/users và /admin/users/:id (không có giao dịch, số dư, mô tả).\n2. Thống kê: định nghĩa chính xác DAU/MAU (dựa last_login_at hay audit), tổng giao dịch, danh mục dùng nhiều nhất, tỷ lệ chấp nhận AI, số nhận định; quy tắc ẩn nhóm < 5 người dùng (k-anonymity) áp dụng ở đâu.\n3. Vô hiệu hóa tài khoản: thu hồi mọi phiên ngay; admin không tự vô hiệu hóa chính mình; không vô hiệu hóa admin cuối cùng.\n4. Danh mục mặc định: \"ẩn\" thay vì xóa khi đã có giao dịch; đổi tên có ảnh hưởng dữ liệu lịch sử không.\n5. Tip templates và announcements: lọc HTML thế nào (chỉ văn bản thuần hay allowlist), xem trước trước khi xuất bản.\n6. Danh sách hành động admin phải ghi audit_logs và trường metadata.\nTrả về ADR-ADMIN-01.",
+    "adr": "ADR-ADMIN-01",
+    "mode": "agent"
+  },
+  {
+    "id": "P14.2-B",
+    "name": "p14-2b-admin-build",
+    "title": "Hiện thực khu vực quản trị",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Nhiều trang CRUD và thống kê cả FE lẫn BE.",
+    "phase": 14,
+    "refs": [
+      [
+        "design",
+        "07-thiet-ke-api.md"
+      ],
+      [
+        "design",
+        "08-thiet-ke-giao-dien.md"
+      ],
+      [
+        "adr",
+        "ADR-ADMIN-01.md"
+      ]
+    ],
+    "attachNotes": [
+      "ADR-ADMIN-01, mục 7.3.4, 8.1 Sitemap (khu admin)"
+    ],
+    "inputs": [],
+    "body": "Backend api/src/modules/admin (mọi route authorize('admin')): stats/overview, stats/categories-usage, users (tìm kiếm, phân trang), users/:id, users/:id/disable|enable, users/:id/send-reset, CRUD categories (mặc định), CRUD tip-templates, CRUD announcements, GET audit-logs (lọc thời gian, hành động, người thực hiện). Ghi audit đúng ADR. GET /announcements/active cho người dùng.\nFrontend AdminLayout (menu riêng, tải lazy): Dashboard thống kê (thẻ số + biểu đồ), Người dùng, Danh mục mặc định (kéo thả sắp xếp), Mẫu mẹo (có ô xem trước khi thay biến bằng giá trị mẫu), Thông báo hệ thống (thời gian hiệu lực), Nhật ký kiểm toán (chỉ đọc).\nTest: admin không gọi được API lấy giao dịch người dùng; vô hiệu hóa → refresh token của user đó bị thu hồi; sinh viên gọi /admin/* → 403.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P15.1",
+    "name": "p15-1-design-system",
+    "title": "Design system, layout, dark mode, cỡ chữ",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "Chủ yếu SCSS và cấu hình theo design tokens có sẵn.",
+    "phase": 15,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "08-thiet-ke-giao-dien.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 8.2 Design tokens, 5.15, 8.4"
+    ],
+    "inputs": [],
+    "body": "- src/styles: _tokens.scss (màu theo bảng 8.2 cho cả light/dark qua [data-bs-theme]), ghi đè biến Bootstrap 5.3, font Inter tự host (subset latin + vietnamese), số dạng tabular-nums cho cột tiền, bo góc 12px thẻ / 8px nút.\n- ThemeProvider: dark mode theo prefers-color-scheme mặc định, công tắc trên navbar, lưu vào preferences (localStorage + PATCH /me).\n- Font scale 4 mức (90/100/115/130%) đổi font-size của html; mọi kích thước dùng rem.\n- Layout: PublicLayout, StudentLayout (navbar + sidebar desktop, bottom nav mobile, FAB thêm nhanh), AdminLayout.\n- Chuyển trang 150–200 ms, tôn trọng prefers-reduced-motion; spinner trên nút đang xử lý.\n- Trang 404 và trang lỗi chung.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P15.2",
+    "name": "p15-2-landing-sitemap-chatbot",
+    "title": "Trang chủ công khai, sitemap, chatbot Tawk.to",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "Trang tĩnh và nhúng script theo hướng dẫn.",
+    "phase": 15,
+    "refs": [
+      [
+        "design",
+        "01-gioi-thieu.md"
+      ],
+      [
+        "design",
+        "03-lua-chon-cong-nghe.md"
+      ],
+      [
+        "design",
+        "08-thiet-ke-giao-dien.md"
+      ],
+      [
+        "srs",
+        "campus-coin-srs.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 8.1 Sitemap, 3.4 (Tawk.to), SRS mục 1.9 (sitemap bắt buộc ở trang chủ)"
+    ],
+    "inputs": [],
+    "body": "- Landing page: hero giới thiệu Campus Coin (tagline \"Smart Spending, Student Style\"), 6 tính năng chính, ảnh chụp màn hình (placeholder), CTA Đăng ký/Đăng nhập, footer có link Sitemap (BẮT BUỘC theo SRS) và link Giới thiệu/Điều khoản/Quyền riêng tư.\n- Trang /sitemap: sinh từ cấu hình route (không viết tay), nhóm Công khai / Sinh viên / Quản trị, mỗi mục có mô tả một dòng.\n- Nhúng Tawk.to: component TawkWidget chỉ tải script sau khi trang đã render, ID lấy từ VITE_TAWK_PROPERTY_ID / VITE_TAWK_WIDGET_ID; không tải trong khu admin. Soạn sẵn 10 câu FAQ bằng tiếng Anh cho Tawk.to shortcuts (cách thêm giao dịch, nhập CSV, đặt ngân sách, AI dùng dữ liệu gì...).\n- Toàn bộ nội dung trang bằng tiếng Anh; viết copy marketing ngắn gọn, giọng thân thiện với sinh viên.\n- Onboarding 3 bước cho người dùng mới (nhập trợ cấp cơ sở, mục tiêu tiết kiệm, ghi giao dịch đầu tiên).",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P15.3",
+    "name": "p15-3-a11y-audit",
+    "title": "Rà soát khả năng tiếp cận (WCAG 2.2 AA)",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Phải quét và sửa nhiều file giao diện cùng lúc.",
+    "phase": 15,
+    "refs": [
+      [
+        "design",
+        "08-thiet-ke-giao-dien.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 8.5 Khả năng tiếp cận"
+    ],
+    "inputs": [],
+    "body": "Rà toàn bộ thư mục web/src và sửa:\n- Mọi ô nhập có <label> liên kết; lỗi form gắn aria-describedby và aria-invalid.\n- Mọi nút chỉ có icon có aria-label; icon trang trí aria-hidden.\n- Điều hướng bàn phím đủ: thứ tự tab hợp lý, focus hiển thị rõ, modal bẫy focus và trả focus khi đóng, có link \"Skip to main content\".\n- Tương phản ≥ 4.5:1 ở cả light và dark.\n- Biểu đồ có bảng dữ liệu thay thế; màu progress bar luôn kèm chữ.\n- Thông báo toast dùng aria-live.\nLiệt kê từng file đã sửa và lý do. Sau đó cho tôi checklist kiểm tra thủ công bằng bàn phím và Lighthouse cho 6 trang chính.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P16.1",
+    "name": "p16-1-test-suite",
+    "title": "Bộ test theo test case tài liệu",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Viết test tích hợp trải nhiều module, cần chạy được với MySQL thật.",
+    "phase": 16,
+    "refs": [
+      [
+        "design",
+        "12-chien-luoc-kiem-thu.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 12.1, 12.2 (test case TC-01 → TC-12), 12.3 Dữ liệu kiểm thử"
+    ],
+    "inputs": [],
+    "body": "1. Hạ tầng test api/tests: setup tạo DB test riêng (campus_coin_test), chạy migrate trước khi chạy suite, xóa dữ liệu giữa các test bằng TRUNCATE theo thứ tự khóa ngoại; factory tạo user/category/transaction; helper loginAs(role).\n2. Viết test tích hợp cho TỪNG test case TC-01 → TC-12 trong mục 12.2, tên test ghi rõ mã TC.\n3. Bổ sung bộ test \"cross-tenant\": với MỌI endpoint có :id của sinh viên (transactions, categories, budgets, recurring-rules, imports, bookmarks, tips, notifications), user B truy cập tài nguyên user A phải nhận 404.\n4. Cấu hình vitest --coverage, xuất báo cáo html.\nCho tôi lệnh chạy và cách đọc báo cáo coverage.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P16.2",
+    "name": "p16-2-manual-test-scenarios",
+    "title": "Kịch bản kiểm thử luồng thủ công",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "Viết tài liệu kịch bản từ danh sách chức năng.",
+    "phase": 16,
+    "refs": [
+      [
+        "design",
+        "11-trien-khai-van-hanh.md"
+      ],
+      [
+        "design",
+        "phu-luc-a-truy-vet-chuc-nang.md"
+      ]
+    ],
+    "attachNotes": [
+      "Phụ lục A – Ma trận truy vết yêu cầu chức năng, mục 11.5 Tài khoản demo"
+    ],
+    "inputs": [],
+    "body": "Viết docs/manual-test-scenarios.md: 15 kịch bản kiểm thử luồng (mỗi kịch bản: mã, mục tiêu, tài khoản dùng, các bước, kết quả mong đợi, cột Đạt/Không đạt, người kiểm, ngày). Phủ đủ mọi yêu cầu chức năng SRS: đăng ký/xác minh/đăng nhập/quên mật khẩu, admin login riêng, hồ sơ, danh mục, thêm nhanh, định kỳ, sửa/xóa/khôi phục có lịch sử, nhập CSV có gợi ý AI, dashboard, 3 loại báo cáo + lọc + xuất PDF/PNG + email, nhận định AI, mẹo pin/dismiss, ngân sách + cảnh báo, bookmark, quản trị, bất thường/trùng lặp/dự báo, dark mode/cỡ chữ/breadcrumbs, sitemap, chatbot. Ghi rõ kiểm tra trên Chrome, Firefox, Edge và điện thoại.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P16.3",
+    "name": "p16-3-security-audit",
+    "title": "Rà soát bảo mật toàn diện",
+    "tier": "🔴",
+    "tierName": "Cao cấp/suy luận",
+    "why": "Cần tư duy như kẻ tấn công trên toàn bộ codebase; mô hình rẻ thường bỏ sót lỗi logic phân quyền.",
+    "phase": 16,
+    "refs": [
+      [
+        "design",
+        "09-bao-mat.md"
+      ]
+    ],
+    "attachNotes": [
+      "chương 9 Bảo mật; cho AI truy cập toàn bộ thư mục api/src và web/src (agent tự đọc codebase)"
+    ],
+    "inputs": [],
+    "body": "Bạn là chuyên gia kiểm thử xâm nhập. Rà soát TOÀN BỘ mã nguồn theo OWASP Top 10 (2021) và OWASP API Security Top 10 (2023). Đặc biệt kiểm tra:\n1. Mọi truy vấn Prisma/$queryRaw có lọc userId không; có chỗ nào nhận userId, role, status từ client không (mass assignment).\n2. $queryRaw có chỗ nào nối chuỗi thay vì tham số hóa không.\n3. Luồng refresh token, reset mật khẩu, xác minh email: có thể dùng lại token, đoán token, hay khóa tài khoản người khác không.\n4. XSS: có dangerouslySetInnerHTML hay render HTML từ tip template/announcement/nhận định LLM không.\n5. Nhập CSV: CSV injection, file lớn, zip bomb đổi đuôi, ký tự điều khiển.\n6. Prompt injection qua mô tả giao dịch tới LLM; PII có lọt ra ngoài không.\n7. Rate limit có bị bỏ qua bằng cách đổi header (X-Forwarded-For) không – kiểm tra cấu hình trust proxy.\n8. Header bảo mật, CORS, cookie flags, thông báo lỗi có lộ stack/thông tin nội bộ không.\n9. Secrets có bị commit hoặc log không.\nKHÔNG sửa code. Trả về bảng: Mức độ (Critical/High/Medium/Low) | Vị trí (file:dòng) | Mô tả | Cách khai thác | Cách sửa đề xuất. Sắp xếp theo mức độ.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P16.4",
+    "name": "p16-4-security-fix",
+    "title": "Sửa lỗi bảo mật theo báo cáo",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Sửa theo danh sách đã được phân tích sẵn, có thể chạm nhiều file.",
+    "phase": 16,
+    "refs": [],
+    "attachNotes": [],
+    "inputs": [
+      "Dán bảng kết quả P16.3 – chỉ giữ các dòng đội đã đồng ý sửa"
+    ],
+    "body": "{{INPUT:Dán bảng kết quả P16.3 – chỉ giữ các dòng đội đã đồng ý sửa}}\n\nSửa lần lượt từng lỗi trong bảng, theo thứ tự mức độ. Với mỗi lỗi: (1) sửa code, (2) viết thêm một test tái hiện lỗi và chứng minh đã được sửa, (3) ghi một dòng tóm tắt. Không thay đổi hành vi khác ngoài phạm vi lỗi.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P17.1",
+    "name": "p17-1-docker-prod",
+    "title": "Dockerfile và Docker Compose production",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Nhiều file hạ tầng phải khớp nhau (2 Dockerfile, Nginx, Compose, healthcheck).",
+    "phase": 17,
+    "refs": [
+      [
+        "design",
+        "04-kien-truc-he-thong.md"
+      ],
+      [
+        "design",
+        "09-bao-mat.md"
+      ],
+      [
+        "design",
+        "11-trien-khai-van-hanh.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 4.4 Kiến trúc triển khai (bảng container), 11.4.2, 9.11"
+    ],
+    "inputs": [],
+    "body": "Tạo:\n1. api/Dockerfile multi-stage (node:24-alpine): build TypeScript + prisma generate; image cuối chỉ có dist, node_modules production, prisma; chạy user node; HEALTHCHECK gọi /api/v1/health/live.\n2. web/Dockerfile multi-stage: build Vite → nginx:alpine phục vụ /usr/share/nginx/html.\n3. web/nginx.conf: SPA fallback về index.html; proxy /api/ tới http://api:3000 (đặt X-Forwarded-For, X-Real-IP); gzip; cache dài hạn cho file có hash, no-cache cho index.html; giới hạn body 2 MB; limit_req 20 r/s burst 40; header bảo mật (HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy); server 443 dùng chứng chỉ Let's Encrypt mount từ /etc/letsencrypt.\n4. docker-compose.yml production: web (cổng 80/443), api (restart unless-stopped, ENABLE_CRON=true, không mở cổng ra ngoài), mysql (volume, không mở cổng, healthcheck); api depends_on mysql healthy; mạng nội bộ.\n5. Cấu hình Express trust proxy đúng 1 hop để rate limit đọc đúng IP.\n6. Script scripts/backup.sh: mysqldump --single-transaction, nén gzip, giữ 7 bản gần nhất; kèm dòng crontab 02:00.\nGiải thích từng quyết định bảo mật trong Dockerfile.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P17.2",
+    "name": "p17-2-github-actions",
+    "title": "Pipeline GitHub Actions",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "YAML theo quy trình đã chốt (Hình 28).",
+    "phase": 17,
+    "refs": [
+      [
+        "design",
+        "11-trien-khai-van-hanh.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 11.2 Pipeline CI/CD, Hình 28"
+    ],
+    "inputs": [],
+    "body": "Tạo .github/workflows/ci.yml (chạy mỗi PR và push): npm ci → lint → typecheck → test (service container mysql:8.4, chạy migrate) → npm audit --audit-level=high (fail nếu có High).\nTạo .github/workflows/deploy.yml (khi push main, sau khi CI xanh): build 2 image, đẩy lên GHCR (tag = git SHA); SSH vào VPS (secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY): chạy scripts/backup.sh → docker compose pull → docker compose run --rm api npx prisma migrate deploy → docker compose up -d → smoke test curl /api/v1/health/ready (thử 10 lần, cách 3 giây); thất bại thì quay về tag image trước và báo lỗi.\nThêm .github/dependabot.yml cho npm (hằng tuần).",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P17.3",
+    "name": "p17-3-vps-checklist",
+    "title": "Checklist dựng VPS lần đầu",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "Tài liệu vận hành theo các bước tiêu chuẩn.",
+    "phase": 17,
+    "refs": [
+      [
+        "design",
+        "11-trien-khai-van-hanh.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 11.4.4 Triển khai production"
+    ],
+    "inputs": [],
+    "body": "Viết docs/deploy-vps.md: các lệnh tuần tự trên Ubuntu 24.04 để: tạo user deploy, tắt đăng nhập root và mật khẩu SSH, bật UFW (22, 80, 443), cài Docker Engine + Compose v2, trỏ DNS, lấy chứng chỉ Let's Encrypt bằng certbot (standalone lần đầu, sau đó tự gia hạn và reload nginx), tạo file .env production (liệt kê biến, KHÔNG điền giá trị), chạy lần đầu (migrate + seed base + seed demo), cài crontab backup, đăng ký UptimeRobot cho /api/v1/health/ready. Mỗi bước có lệnh kiểm tra đã thành công.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P18.1",
+    "name": "p18-1-demo-seed",
+    "title": "Dữ liệu demo 6 tháng",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Dữ liệu phải \"kể được câu chuyện\" để kích hoạt đủ tính năng khi demo (cảnh báo, mẹo, bất thường, nhận định).",
+    "phase": 18,
+    "refs": [
+      [
+        "design",
+        "05-thiet-ke-chuc-nang.md"
+      ],
+      [
+        "design",
+        "11-trien-khai-van-hanh.md"
+      ],
+      [
+        "design",
+        "12-chien-luoc-kiem-thu.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 11.5 Tài khoản demo, 12.3 Dữ liệu kiểm thử, 5.9.1, 5.10, 5.14"
+    ],
+    "inputs": [],
+    "body": "Viết api/prisma/seed/demo.ts (chỉ chạy khi SEED_DEMO=true) tạo các tài khoản theo mục 11.5 và dữ liệu có chủ đích:\n- Sinh viên 1 (AI bật): 6 tháng giao dịch thực tế (trợ cấp định kỳ đầu tháng, cơm/cafe hằng ngày, xe buýt, phòng trọ, sách đầu kỳ, Netflix + Spotify + 2 gói khác), THÁNG TRƯỚC Food delivery tăng ~40% để nhận định có nội dung; tháng này Food đã 85% ngân sách (cảnh báo NEAR_LIMIT), 9 khoản đồ uống nhỏ trong 7 ngày (kích hoạt R3), 1 khoản chi lớn bất thường, 1 cặp giao dịch nghi trùng; có sẵn nhận định 3 tháng gần nhất; 2 tip đã pin, 1 bookmark.\n- Sinh viên 2 (AI tắt): 3 tháng, có giao dịch định kỳ.\n- Sinh viên 3: tài khoản mới để demo onboarding và nhập CSV (kèm file demo/import-sample.csv 40 dòng, có 2 dòng lỗi và 3 dòng trùng).\n- Tài khoản bị vô hiệu hóa.\nMọi mô tả giao dịch, tên danh mục cá nhân, ghi chú, nhận định và tip bằng tiếng Anh (vd. \"Campus Cafe latte\", \"Bus pass\", \"Dorm rent\"); tên người dùng demo có thể là tên Việt (Nguyen Van An) để minh họa dữ liệu có dấu.\nDữ liệu sinh bằng seed ngẫu nhiên CỐ ĐỊNH (seeded RNG) để lần nào chạy cũng giống nhau. Ngày tính tương đối so với ngày chạy seed.\nSau đó thêm script xuất /database/seed.sql bằng mysqldump --no-create-info.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P18.2",
+    "name": "p18-2-readme",
+    "title": "README và hướng dẫn cài đặt",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "Tổng hợp từ nội dung đã có.",
+    "phase": 18,
+    "refs": [
+      [
+        "design",
+        "01-gioi-thieu.md"
+      ],
+      [
+        "design",
+        "11-trien-khai-van-hanh.md"
+      ]
+    ],
+    "attachNotes": [
+      "mục 11.4 Hướng dẫn cài đặt, 11.5 Tài khoản demo, 1.6 Giả định"
+    ],
+    "inputs": [],
+    "body": "Viết README.md cho repo bằng tiếng Anh gồm: giới thiệu, ảnh chụp màn hình, tính năng theo nhóm SRS, stack, cài đặt bằng Docker, cài đặt thủ công, biến môi trường, tài khoản demo (bảng), URL bản trực tuyến, chạy test, cấu trúc thư mục, giả định, khai báo công cụ AI (trỏ tới docs/ai-usage-log.md), giấy phép.\nViết thêm nội dung cho file ReadMe.doc theo SRS: danh sách giả định (lấy từ bảng 1.6), hướng dẫn cài đặt rút gọn, thông tin đăng nhập mọi loại người dùng. Viết bằng tiếng Anh, xuất dạng Markdown để tôi dán vào Word.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P18.3",
+    "name": "p18-3-video-script",
+    "title": "Kịch bản video demo",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "Viết kịch bản theo danh sách chức năng.",
+    "phase": 18,
+    "refs": [
+      [
+        "design",
+        "01-gioi-thieu.md"
+      ],
+      [
+        "design",
+        "phu-luc-a-truy-vet-chuc-nang.md"
+      ],
+      [
+        "srs",
+        "campus-coin-srs.md"
+      ]
+    ],
+    "attachNotes": [
+      "Phụ lục A – Ma trận truy vết chức năng; SRS mục 1.9"
+    ],
+    "inputs": [],
+    "body": "SRS yêu cầu video .mp4 trình diễn TẤT CẢ chức năng trong Functional Requirements. Viết kịch bản video 8–10 phút dạng bảng: Thời điểm | Màn hình/Thao tác | Lời thoại (tiếng Anh, ngắn) | Yêu cầu SRS được chứng minh. Thứ tự hợp lý: trang chủ + sitemap → đăng ký/xác minh → onboarding → thêm nhanh có gợi ý AI → định kỳ → nhập CSV → dashboard → báo cáo + lọc + xuất PDF/PNG + email → ngân sách + cảnh báo → nhận định AI → mẹo → bất thường/trùng lặp/dự báo → bookmark → sửa/xóa/khôi phục + lịch sử → dark mode/cỡ chữ/breadcrumbs → chatbot → quên mật khẩu → đăng nhập admin + các chức năng quản trị. Cuối kịch bản có checklist để đánh dấu không bỏ sót yêu cầu nào.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "P18.4",
+    "name": "p18-4-ai-declaration",
+    "title": "Tổng hợp khai báo AI để nộp",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "Tóm tắt từ nhật ký có sẵn.",
+    "phase": 18,
+    "refs": [],
+    "attachNotes": [],
+    "inputs": [
+      "Dán nội dung docs/ai-usage-log.md"
+    ],
+    "body": "{{INPUT:Dán nội dung docs/ai-usage-log.md}}\n\nTổng hợp nhật ký thành bảng khai báo cho tài liệu nộp (Phụ lục D): Công cụ AI | Mục đích sử dụng | Phạm vi / Mức độ | Người kiểm duyệt. Gộp theo công cụ, viết trung thực, không phóng đại hay giảm nhẹ. Thêm một đoạn cam kết: đội hiểu, đã chỉnh sửa và giải thích được toàn bộ mã nguồn.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "R-1",
+    "name": "r1-review",
+    "title": "Rà soát code trước khi merge",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Đọc diff nhiều file và đối chiếu quy ước. Nâng lên 🔴 nếu diff chạm auth, phân quyền hoặc tiền.",
+    "phase": null,
+    "refs": [],
+    "attachNotes": [],
+    "inputs": [
+      "Dán diff của Pull Request hoặc chỉ định nhánh"
+    ],
+    "body": "{{INPUT:Dán diff của Pull Request hoặc chỉ định nhánh}}\n\nRà soát diff này như một reviewer khó tính. Kiểm tra: đúng quy ước trong CLAUDE.md; lọc userId; validate Zod; xử lý lỗi Problem Details; số tiền dùng Decimal/chuỗi; timezone; test có đủ trường hợp thành công + bị từ chối; không có any, console.log, secret; chuỗi giao diện tiếng Anh đã nằm trong web/src/content/en.ts.\nTrả về: danh sách vấn đề theo mức độ (Phải sửa / Nên sửa / Góp ý), mỗi vấn đề có file:dòng và đề xuất cụ thể. KHÔNG tự sửa.",
+    "adr": null,
+    "mode": "ask"
+  },
+  {
+    "id": "R-2",
+    "name": "r2-explain-defense",
+    "title": "Giải thích để bảo vệ trước giám khảo",
+    "tier": "🔴",
+    "tierName": "Cao cấp/suy luận",
+    "why": "Cần giải thích sâu \"vì sao\", so sánh phương án và lường trước câu hỏi khó; đây là thứ quyết định điểm vấn đáp.",
+    "phase": null,
+    "refs": [],
+    "attachNotes": [],
+    "inputs": [
+      "Dán đoạn code hoặc chỉ định module"
+    ],
+    "body": "{{INPUT:Dán đoạn code hoặc chỉ định module}}\n\nTôi phải trình bày và bảo vệ phần này trước giám khảo Techwiz. Hãy:\n1. Giải thích luồng hoạt động bằng lời đơn giản, theo từng bước.\n2. Giải thích vì sao chọn cách làm này thay vì 2 phương án khác (nêu cụ thể phương án khác là gì).\n3. Liệt kê 8 câu hỏi khó giám khảo có thể hỏi về phần này (bảo mật, hiệu năng, ca biên, vì sao không dùng X) kèm gợi ý trả lời ngắn.\n4. Chỉ ra 2–3 điểm yếu thật sự của cách làm hiện tại và cách cải thiện nếu có thêm thời gian.\nKhông khen chung chung; viết như một người hướng dẫn kỹ thuật.",
+    "adr": null,
+    "mode": "ask"
+  },
+  {
+    "id": "R-3",
+    "name": "r3-debug",
+    "title": "Gỡ lỗi có hệ thống",
+    "tier": "🔵",
+    "tierName": "Tầm trung agentic",
+    "why": "Cần đọc log, code liên quan và chạy thử giả thuyết. Nâng lên 🔴 nếu lỗi liên quan dữ liệu sai lệch hoặc chỉ xảy ra ngẫu nhiên.",
+    "phase": null,
+    "refs": [],
+    "attachNotes": [],
+    "inputs": [],
+    "body": "Lỗi: [mô tả hiện tượng]\nKỳ vọng: [...]\nThực tế: [...]\nCách tái hiện: [...]\nLog / stack trace / response: [dán]\nĐã thử: [...]\n\nHãy: (1) liệt kê tối đa 3 giả thuyết nguyên nhân xếp theo khả năng; (2) với giả thuyết đầu tiên, chỉ ra cách kiểm chứng (lệnh, log cần thêm, test cần viết); (3) chỉ đề xuất sửa sau khi đã xác định nguyên nhân, kèm test chống tái phát. Không sửa đoán mò nhiều chỗ cùng lúc.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "R-4",
+    "name": "r4-write-tests",
+    "title": "Viết test cho code có sẵn",
+    "tier": "🟢",
+    "tierName": "Rẻ/nhanh",
+    "why": "Viết test theo mẫu cho hàm đã rõ hành vi.",
+    "phase": null,
+    "refs": [],
+    "attachNotes": [],
+    "inputs": [
+      "Dán hàm/module"
+    ],
+    "body": "{{INPUT:Dán hàm/module}}\n\nViết unit test Vitest cho đoạn code này: phủ trường hợp chuẩn, trường hợp biên (0, rỗng, null, giá trị lớn nhất, ngày cuối tháng, năm nhuận, múi giờ), và trường hợp lỗi. Mỗi test có tên mô tả hành vi bằng tiếng Anh (\"returns ... when ...\"). Không mock những gì không cần mock.",
+    "adr": null,
+    "mode": "agent"
+  },
+  {
+    "id": "R-5",
+    "name": "r5-optimize-query",
+    "title": "Tối ưu truy vấn chậm",
+    "tier": "🔴",
+    "tierName": "Cao cấp/suy luận",
+    "why": "Đọc kế hoạch thực thi và chọn chỉ mục đúng cần suy luận; chỉ mục sai làm chậm ghi.",
+    "phase": null,
+    "refs": [],
+    "attachNotes": [],
+    "inputs": [
+      "Dán câu truy vấn, kết quả EXPLAIN ANALYZE, số lượng bản ghi các bảng liên quan, danh sách chỉ mục hiện có"
+    ],
+    "body": "{{INPUT:Dán câu truy vấn, kết quả EXPLAIN ANALYZE, số lượng bản ghi các bảng liên quan, danh sách chỉ mục hiện có}}\n\nPhân tích vì sao truy vấn chậm. Đề xuất: viết lại truy vấn và/hoặc chỉ mục mới (kèm thứ tự cột và lý do). Ước lượng ảnh hưởng tới tốc độ ghi. Nếu thêm chỉ mục, viết migration tương ứng.",
+    "adr": null,
+    "mode": "agent"
+  }
+]

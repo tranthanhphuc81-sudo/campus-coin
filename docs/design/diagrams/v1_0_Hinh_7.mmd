@@ -1,0 +1,18 @@
+flowchart TB
+  APP["App.tsx<br/>QueryClientProvider · AuthProvider ·<br/>ThemeProvider · ToastProvider"]
+  APP -.-> ST
+  subgraph ST["Quản lý trạng thái"]
+    direction LR
+    s1["Server state:<br/>TanStack Query"] ~~~ s2["Auth state:<br/>Context (token in-memory)"] ~~~ s3["UI prefs:<br/>Context + localStorage"] ~~~ s4["Form state:<br/>React Hook Form + Zod"]
+  end
+  APP --> RR["React Router v7 (lazy-loaded routes)"]
+  RR --> PL["PublicLayout"] --> PP["Landing · Sitemap · Login · Register<br/>Forgot / Reset Password · Verify Email"]
+  RR --> SL["StudentLayout<br/>ProtectedRoute role = student"] --> SP["Dashboard · Transactions · Recurring · Import CSV<br/>Categories · Budgets · Reports · Insights<br/>Tips · Bookmarks · Profile & Settings"]
+  RR --> AL["AdminLayout<br/>ProtectedRoute role = admin"] --> AP["Admin Dashboard · Users · Default Categories<br/>Tip Templates · Announcements · Audit Log"]
+  SP --> SH
+  AP --> SH
+  subgraph SH["Shared UI components"]
+    direction LR
+    c1["QuickAddModal"] ~~~ c2["CategorySelect<br/>+ AI chip"] ~~~ c3["BudgetProgressBar"] ~~~ c4["ChartCard"]
+    c5["Breadcrumbs"] ~~~ c6["NotificationBell<br/>(polling 60 giây)"] ~~~ c7["Skeleton / Spinner"] ~~~ c8["ConfirmDialog"]
+  end

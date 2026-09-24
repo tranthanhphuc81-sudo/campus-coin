@@ -1,0 +1,14 @@
+flowchart TB
+  s(["Sự kiện giao dịch CHI<br/>created / updated / deleted"]) --> q1{"Có budget cho<br/>danh mục + tháng?"}
+  q1 -- "Có" --> c1["spent = SUM(amount) tháng<br/>pct = spent / limit × 100"]
+  q1 -- "Không" --> e(["Kết thúc"])
+  c1 --> q2{"Mức?"}
+  q2 -- "pct ≥ 100" --> l1["Level = EXCEEDED"]
+  q2 -- "ngưỡng ≤ pct < 100<br/>(mặc định 80%)" --> l2["Level = NEAR_LIMIT"]
+  q2 -- "pct < ngưỡng" --> e
+  l1 --> q3{"Đã gửi level này<br/>trong tháng?<br/>(dedupe_key)"}
+  l2 --> q3
+  q3 -- "Rồi" --> e
+  q3 -- "Chưa" --> n1["INSERT notification"]
+  n1 --> n2["Chuông + toast<br/>(frontend tải lại sau khi lưu<br/>/ polling 60 giây)<br/>+ progress bar đổi màu"]
+  n2 --> e
