@@ -1,0 +1,30 @@
+{
+  "name": "@campus-coin/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src --ext .ts,.tsx --no-error-on-unmatched-pattern"
+  },
+  "dependencies": {
+    "@campus-coin/shared": "file:../packages/shared",
+    "@hookform/resolvers": "^5.2.2",
+    "@tanstack/react-query": "^5.90.5",
+    "axios": "^1.12.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-hook-form": "^7.65.0",
+    "react-router-dom": "^7.9.3",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^5.0.4",
+    "vite": "^7.1.9",
+    "vitest": "^5.0.1"
+  }
+}
