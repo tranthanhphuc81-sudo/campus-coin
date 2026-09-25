@@ -5,6 +5,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { Link } from "react-router-dom";
 
 import AuthShell from "@/components/auth/AuthShell";
+import LoadingButton from "@/components/common/LoadingButton";
 import { en } from "@/content/en";
 import { getPasswordStrength } from "@/lib/password";
 import { applyProblemToForm, parseProblem } from "@/lib/problem";
@@ -67,13 +68,17 @@ export default function RegisterPage() {
       }
     >
       {flash ? (
-        <p role="status" aria-live="polite">
+        <p
+          className={flash.kind === "success" ? "flash-success" : "flash-error"}
+          role="status"
+          aria-live="polite"
+        >
           {flash.message}
         </p>
       ) : null}
 
-      <form noValidate onSubmit={onSubmit}>
-        <div>
+      <form className="form-stack" noValidate onSubmit={onSubmit}>
+        <div className="form-field">
           <label htmlFor="fullName">{en.auth.register.fullNameLabel}</label>
           <input
             id="fullName"
@@ -84,13 +89,13 @@ export default function RegisterPage() {
             {...register("fullName")}
           />
           {errors.fullName ? (
-            <p id="fullName-error" role="alert">
+            <p id="fullName-error" className="form-error" role="alert">
               {errors.fullName.message}
             </p>
           ) : null}
         </div>
 
-        <div>
+        <div className="form-field">
           <label htmlFor="email">{en.common.emailLabel}</label>
           <input
             id="email"
@@ -101,13 +106,13 @@ export default function RegisterPage() {
             {...register("email")}
           />
           {errors.email ? (
-            <p id="email-error" role="alert">
+            <p id="email-error" className="form-error" role="alert">
               {errors.email.message}
             </p>
           ) : null}
         </div>
 
-        <div>
+        <div className="form-field">
           <label htmlFor="password">{en.common.passwordLabel}</label>
           <input
             id="password"
@@ -118,19 +123,19 @@ export default function RegisterPage() {
             {...register("password")}
           />
           {errors.password ? (
-            <p id="password-error" role="alert">
+            <p id="password-error" className="form-error" role="alert">
               {errors.password.message}
             </p>
           ) : null}
         </div>
 
-        <div aria-live="polite">
+        <div className="form-field" aria-live="polite">
           <p>{en.auth.register.passwordStrengthLabel}</p>
           <progress max={100} value={strength.percent} />
           <p>{en.auth.register.strengthLevels[strength.score]}</p>
         </div>
 
-        <div>
+        <div className="form-field">
           <label htmlFor="confirmPassword">{en.auth.register.confirmPasswordLabel}</label>
           <input
             id="confirmPassword"
@@ -141,15 +146,15 @@ export default function RegisterPage() {
             {...register("confirmPassword")}
           />
           {errors.confirmPassword ? (
-            <p id="confirmPassword-error" role="alert">
+            <p id="confirmPassword-error" className="form-error" role="alert">
               {errors.confirmPassword.message}
             </p>
           ) : null}
         </div>
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? en.common.loadingLabel : en.auth.register.submitLabel}
-        </button>
+        <LoadingButton type="submit" isLoading={isSubmitting} loadingLabel={en.common.loadingLabel}>
+          {en.auth.register.submitLabel}
+        </LoadingButton>
       </form>
     </AuthShell>
   );

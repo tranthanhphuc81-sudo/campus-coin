@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/app/AuthProvider";
+import LoadingButton from "@/components/common/LoadingButton";
 import AuthShell from "@/components/auth/AuthShell";
 import { en } from "@/content/en";
 import { applyProblemToForm, parseProblem } from "@/lib/problem";
@@ -68,13 +69,17 @@ export default function LoginPage() {
       }
     >
       {flash ? (
-        <p role="status" aria-live="polite">
+        <p
+          className={flash.kind === "success" ? "flash-success" : "flash-error"}
+          role="status"
+          aria-live="polite"
+        >
           {flash.message}
         </p>
       ) : null}
 
-      <form noValidate onSubmit={onSubmit}>
-        <div>
+      <form className="form-stack" noValidate onSubmit={onSubmit}>
+        <div className="form-field">
           <label htmlFor="email">{en.common.emailLabel}</label>
           <input
             id="email"
@@ -85,13 +90,13 @@ export default function LoginPage() {
             {...register("email")}
           />
           {errors.email ? (
-            <p id="email-error" role="alert">
+            <p id="email-error" className="form-error" role="alert">
               {errors.email.message}
             </p>
           ) : null}
         </div>
 
-        <div>
+        <div className="form-field">
           <label htmlFor="password">{en.common.passwordLabel}</label>
           <input
             id="password"
@@ -102,22 +107,22 @@ export default function LoginPage() {
             {...register("password")}
           />
           {errors.password ? (
-            <p id="password-error" role="alert">
+            <p id="password-error" className="form-error" role="alert">
               {errors.password.message}
             </p>
           ) : null}
         </div>
 
-        <div>
+        <div className="form-field">
           <label htmlFor="rememberMe">
             <input id="rememberMe" type="checkbox" {...register("rememberMe")} />
             {en.common.rememberMeLabel}
           </label>
         </div>
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? en.common.loadingLabel : en.auth.login.submitLabel}
-        </button>
+        <LoadingButton type="submit" isLoading={isSubmitting} loadingLabel={en.common.loadingLabel}>
+          {en.auth.login.submitLabel}
+        </LoadingButton>
       </form>
     </AuthShell>
   );

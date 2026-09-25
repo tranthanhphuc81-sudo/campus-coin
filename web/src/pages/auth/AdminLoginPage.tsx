@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/app/AuthProvider";
 import AuthShell from "@/components/auth/AuthShell";
+import LoadingButton from "@/components/common/LoadingButton";
 import { en } from "@/content/en";
 import { applyProblemToForm, parseProblem } from "@/lib/problem";
 
@@ -62,13 +63,17 @@ export default function AdminLoginPage() {
       }
     >
       {flash ? (
-        <p role="status" aria-live="polite">
+        <p
+          className={flash.kind === "success" ? "flash-success" : "flash-error"}
+          role="status"
+          aria-live="polite"
+        >
           {flash.message}
         </p>
       ) : null}
 
-      <form noValidate onSubmit={onSubmit}>
-        <div>
+      <form className="form-stack" noValidate onSubmit={onSubmit}>
+        <div className="form-field">
           <label htmlFor="email">{en.common.emailLabel}</label>
           <input
             id="email"
@@ -79,13 +84,13 @@ export default function AdminLoginPage() {
             {...register("email")}
           />
           {errors.email ? (
-            <p id="email-error" role="alert">
+            <p id="email-error" className="form-error" role="alert">
               {errors.email.message}
             </p>
           ) : null}
         </div>
 
-        <div>
+        <div className="form-field">
           <label htmlFor="password">{en.common.passwordLabel}</label>
           <input
             id="password"
@@ -96,15 +101,15 @@ export default function AdminLoginPage() {
             {...register("password")}
           />
           {errors.password ? (
-            <p id="password-error" role="alert">
+            <p id="password-error" className="form-error" role="alert">
               {errors.password.message}
             </p>
           ) : null}
         </div>
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? en.common.loadingLabel : en.auth.adminLogin.submitLabel}
-        </button>
+        <LoadingButton type="submit" isLoading={isSubmitting} loadingLabel={en.common.loadingLabel}>
+          {en.auth.adminLogin.submitLabel}
+        </LoadingButton>
       </form>
     </AuthShell>
   );

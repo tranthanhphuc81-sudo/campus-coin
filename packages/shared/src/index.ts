@@ -97,6 +97,55 @@ export const messageResponseSchema = z.object({
   message: z.string(),
 });
 
+export const categoryTypeSchema = z.enum(["income", "expense"]);
+
+export const categorySchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string().min(1).max(50),
+  type: categoryTypeSchema,
+  icon: z.string().nullable(),
+  color: z.string().nullable(),
+  isDefault: z.boolean(),
+  isActive: z.boolean(),
+  sortOrder: z.number().int(),
+});
+
+export const categoriesResponseSchema = z.object({
+  data: z.array(categorySchema),
+});
+
+export const createCategoryInputSchema = z.object({
+  name: z.string().trim().min(1).max(50),
+  type: categoryTypeSchema,
+  icon: z.string().trim().min(1).max(40).optional(),
+  color: z
+    .string()
+    .trim()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  sortOrder: z.number().int().min(0).max(999).optional(),
+});
+
+export const updateCategoryInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(50).optional(),
+    icon: z.string().trim().min(1).max(40).nullable().optional(),
+    color: z
+      .string()
+      .trim()
+      .regex(/^#[0-9A-Fa-f]{6}$/)
+      .nullable()
+      .optional(),
+    sortOrder: z.number().int().min(0).max(999).optional(),
+  })
+  .refine((payload) => Object.keys(payload).length > 0, {
+    message: "At least one field is required.",
+  });
+
+export const deleteCategoryResponseSchema = z.object({
+  archived: z.boolean(),
+});
+
 export type AuthRole = z.infer<typeof authRoleSchema>;
 export type RegisterInput = z.infer<typeof registerInputSchema>;
 export type LoginInput = z.infer<typeof loginInputSchema>;
@@ -106,3 +155,7 @@ export type ForgotPasswordInput = z.infer<typeof forgotPasswordInputSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>;
 export type AuthUser = z.infer<typeof authUserSchema>;
 export type AuthSession = z.infer<typeof authSessionSchema>;
+export type CategoryType = z.infer<typeof categoryTypeSchema>;
+export type Category = z.infer<typeof categorySchema>;
+export type CreateCategoryInput = z.infer<typeof createCategoryInputSchema>;
+export type UpdateCategoryInput = z.infer<typeof updateCategoryInputSchema>;

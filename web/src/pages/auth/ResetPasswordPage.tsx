@@ -6,6 +6,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "@/app/AuthProvider";
 import AuthShell from "@/components/auth/AuthShell";
+import LoadingButton from "@/components/common/LoadingButton";
 import { en } from "@/content/en";
 import { getPasswordStrength } from "@/lib/password";
 import { applyProblemToForm, parseProblem } from "@/lib/problem";
@@ -75,14 +76,18 @@ export default function ResetPasswordPage() {
       }
     >
       {flash ? (
-        <p role="status" aria-live="polite">
+        <p
+          className={flash.kind === "success" ? "flash-success" : "flash-error"}
+          role="status"
+          aria-live="polite"
+        >
           {flash.message}
         </p>
       ) : null}
       {!tokenFromUrl ? <p role="alert">{en.auth.resetPassword.missingTokenMessage}</p> : null}
 
-      <form noValidate onSubmit={onSubmit}>
-        <div>
+      <form className="form-stack" noValidate onSubmit={onSubmit}>
+        <div className="form-field">
           <label htmlFor="token">{en.auth.resetPassword.tokenLabel}</label>
           <input
             id="token"
@@ -92,13 +97,13 @@ export default function ResetPasswordPage() {
             {...register("token")}
           />
           {errors.token ? (
-            <p id="token-error" role="alert">
+            <p id="token-error" className="form-error" role="alert">
               {errors.token.message}
             </p>
           ) : null}
         </div>
 
-        <div>
+        <div className="form-field">
           <label htmlFor="password">{en.common.passwordLabel}</label>
           <input
             id="password"
@@ -109,19 +114,19 @@ export default function ResetPasswordPage() {
             {...register("password")}
           />
           {errors.password ? (
-            <p id="password-error" role="alert">
+            <p id="password-error" className="form-error" role="alert">
               {errors.password.message}
             </p>
           ) : null}
         </div>
 
-        <div aria-live="polite">
+        <div className="form-field" aria-live="polite">
           <p>{en.auth.register.passwordStrengthLabel}</p>
           <progress max={100} value={strength.percent} />
           <p>{en.auth.register.strengthLevels[strength.score]}</p>
         </div>
 
-        <div>
+        <div className="form-field">
           <label htmlFor="confirmPassword">{en.auth.resetPassword.confirmPasswordLabel}</label>
           <input
             id="confirmPassword"
@@ -132,15 +137,15 @@ export default function ResetPasswordPage() {
             {...register("confirmPassword")}
           />
           {errors.confirmPassword ? (
-            <p id="confirmPassword-error" role="alert">
+            <p id="confirmPassword-error" className="form-error" role="alert">
               {errors.confirmPassword.message}
             </p>
           ) : null}
         </div>
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? en.common.loadingLabel : en.auth.resetPassword.submitLabel}
-        </button>
+        <LoadingButton type="submit" isLoading={isSubmitting} loadingLabel={en.common.loadingLabel}>
+          {en.auth.resetPassword.submitLabel}
+        </LoadingButton>
       </form>
     </AuthShell>
   );

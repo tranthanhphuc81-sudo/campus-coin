@@ -13,6 +13,9 @@ out/
 coverage/
 .vite/
 .cache/
+api/dist/
+web/dist/
+packages/shared/dist/
 
 # Temporary files
 .tmp/

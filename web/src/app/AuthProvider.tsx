@@ -32,6 +32,8 @@ import api, {
 
 type AuthStatus = "loading" | "authenticated" | "anonymous";
 
+const SESSION_BOOT_TIMEOUT_MS = 2500;
+
 type AuthContextValue = {
   status: AuthStatus;
   user: AuthUser | null;
@@ -90,9 +92,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let active = true;
 
+    const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<T | null> => {
+      return await Promise.race([
+        promise,
+        new Promise<null>((resolve) => {
+          window.setTimeout(() => resolve(null), timeoutMs);
+        }),
+      ]);
+    };
+
     const boot = async () => {
       try {
-        const restored = await restoreSession();
+        const restored = await withTimeout(restoreSession(), SESSION_BOOT_TIMEOUT_MS);
 
         if (!restored || !restored.accessToken) {
           if (active) {

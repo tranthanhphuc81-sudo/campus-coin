@@ -1,0 +1,92 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mysql"
+    url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+    STUDENT
+    ADMIN
+}
+
+enum CategoryType {
+    INCOME
+    EXPENSE
+}
+
+enum TransactionType {
+    INCOME
+    EXPENSE
+}
+
+model User {
+    id              String         @id @db.Char(36)
+    fullName        String         @map("full_name") @db.VarChar(120)
+    email           String         @unique @db.VarChar(254)
+    passwordHash    String         @map("password_hash") @db.VarChar(255)
+    role            UserRole       @default(STUDENT)
+    emailVerifiedAt DateTime?      @map("email_verified_at")
+    createdAt       DateTime       @default(now()) @map("created_at")
+    updatedAt       DateTime       @updatedAt @map("updated_at")
+    refreshTokens   RefreshToken[]
+    categories      Category[]
+    transactions    Transaction[]
+
+    @@map("users")
+}
+
+model RefreshToken {
+    id        String    @id @db.Char(36)
+    userId    String    @map("user_id") @db.Char(36)
+    expiresAt DateTime  @map("expires_at")
+    revokedAt DateTime? @map("revoked_at")
+    createdAt DateTime  @default(now()) @map("created_at")
+    userAgent String?   @map("user_agent") @db.VarChar(255)
+    ipAddress String?   @map("ip_address") @db.VarChar(64)
+    user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId], map: "idx_refresh_tokens_user_id")
+    @@index([expiresAt], map: "idx_refresh_tokens_expires_at")
+    @@map("refresh_tokens")
+}
+
+model Category {
+    id           Int           @id @default(autoincrement())
+    userId       String?       @map("user_id") @db.Char(36)
+    name         String        @db.VarChar(50)
+    type         CategoryType
+    icon         String?       @db.VarChar(40)
+    color        String?       @db.Char(7)
+    isDefault    Boolean       @default(false) @map("is_default")
+    isActive     Boolean       @default(true) @map("is_active")
+    sortOrder    Int           @default(0) @map("sort_order")
+    createdAt    DateTime      @default(now()) @map("created_at")
+    updatedAt    DateTime      @updatedAt @map("updated_at")
+    user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+    transactions Transaction[]
+
+    @@unique([userId, type, name], map: "uq_categories_user_type_name")
+    @@index([userId, type, isActive], map: "idx_categories_user_type_active")
+    @@map("categories")
+}
+
+model Transaction {
+    id          String          @id @db.Char(36)
+    userId      String          @map("user_id") @db.Char(36)
+    categoryId  Int             @map("category_id")
+    type        TransactionType
+    amount      Decimal         @db.Decimal(14, 2)
+    description String?         @db.VarChar(255)
+    txnDate     DateTime        @map("txn_date") @db.Date
+    createdAt   DateTime        @default(now()) @map("created_at")
+    updatedAt   DateTime        @updatedAt @map("updated_at")
+    user        User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+    category    Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+    @@index([userId, txnDate], map: "idx_transactions_user_date")
+    @@index([userId, categoryId, txnDate], map: "idx_transactions_user_category_date")
+    @@map("transactions")
+}
