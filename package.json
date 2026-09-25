@@ -2,7 +2,33 @@
   "name": "campus-coin",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "api",
+    "web",
+    "packages/*"
+  ],
   "scripts": {
-    "prompts:build": "node tools/prompt-kit/build.mjs"
+    "task": "node tools/task.mjs",
+    "prompts:build": "node tools/prompt-kit/build.mjs",
+    "dev:api": "npm run dev -w api --if-present",
+    "dev:web": "node tools/run-web-dev-if-present.mjs",
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev:api\" \"npm run dev:web\"",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:migrate": "npm run db:migrate -w api",
+    "db:reset": "npm run db:reset -w api",
+    "db:studio": "npm run db:studio -w api",
+    "db:seed": "npm run db:seed -w api",
+    "db:export-schema": "node tools/export-schema.mjs",
+    "keys:generate": "node tools/generate-jwt-keys.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^9.2.1",
+    "eslint": "^10.11.0",
+    "prettier": "^3.6.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1"
   }
 }

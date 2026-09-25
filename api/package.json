@@ -1,0 +1,46 @@
+{
+  "name": "@campus-coin/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src prisma.config.ts vitest.config.ts tests --ext .ts --no-error-on-unmatched-pattern",
+    "db:migrate": "prisma migrate dev --config prisma.config.ts --schema prisma/schema.prisma",
+    "db:reset": "prisma migrate reset --config prisma.config.ts --schema prisma/schema.prisma",
+    "db:studio": "prisma studio --config prisma.config.ts --schema prisma/schema.prisma",
+    "db:seed": "prisma db seed --config prisma.config.ts --schema prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@campus-coin/shared": "file:../packages/shared",
+    "@prisma/client": "^6.19.0",
+    "@types/nodemailer": "^8.0.2",
+    "argon2": "^0.45.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
+    "jose": "^6.2.12",
+    "nodemailer": "^10.0.10",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "uuidv7": "^1.0.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.2",
+    "@types/supertest": "^7.2.1",
+    "prisma": "^6.19.0",
+    "supertest": "^7.3.0",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.1"
+  }
+}
