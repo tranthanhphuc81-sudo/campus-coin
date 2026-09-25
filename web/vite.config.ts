@@ -11,6 +11,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(rootDir, "src"),
+      "@campus-coin/shared": path.resolve(rootDir, "../packages/shared/src/index.ts"),
     },
+  },
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
   },
 });
