@@ -1,8 +1,10 @@
 import { createApp } from "./app.js";
 import { config } from "./config/env.js";
+import { startScheduler } from "./jobs/scheduler.js";
 import { prisma } from "./lib/prisma.js";
 
 const app = createApp();
+const scheduler = startScheduler();
 
 const server = app.listen(config.PORT, () => {
   process.stdout.write(`API listening on port ${config.PORT}\n`);
@@ -19,6 +21,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     }
 
     await prisma.$disconnect();
+    scheduler.stop();
     process.exit(0);
   });
 

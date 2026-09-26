@@ -38,6 +38,24 @@ function readCorsOrigins(): string[] {
     .filter((origin) => origin.length > 0);
 }
 
+function readBooleanWithDefault(key: string, fallback: boolean): boolean {
+  const value = process.env[key];
+  if (!value) {
+    return fallback;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  throw new Error(`Invalid boolean environment variable: ${key}`);
+}
+
 function readJwtSecret(): string {
   const fromEnv = process.env.JWT_SECRET;
   if (fromEnv && fromEnv.trim().length >= 16) {
@@ -58,6 +76,7 @@ export const config = {
   CORS_ORIGINS: readCorsOrigins(),
   DATABASE_URL: readRequired("DATABASE_URL"),
   JWT_SECRET: readJwtSecret(),
+  ENABLE_CRON: readBooleanWithDefault("ENABLE_CRON", false),
   ACCESS_TOKEN_TTL_SECONDS: readIntWithDefault("ACCESS_TOKEN_TTL", 900),
   REFRESH_TOKEN_TTL_SECONDS: readIntWithDefault("REFRESH_TOKEN_TTL", 60 * 60 * 24 * 30),
 } as const;

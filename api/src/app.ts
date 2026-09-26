@@ -14,6 +14,7 @@ import { prisma } from "./lib/prisma.js";
 import { meHandler } from "./modules/auth/controller.js";
 import { adminAuthRouter, authRouter } from "./modules/auth/routes.js";
 import { categoriesRouter } from "./modules/categories/routes.js";
+import { recurringRulesRouter } from "./modules/recurring-rules/routes.js";
 
 export function createApp() {
   const app = express();
@@ -72,6 +73,7 @@ export function createApp() {
   apiRouter.use("/auth", authRouter);
   apiRouter.use("/admin/auth", adminAuthRouter);
   apiRouter.use("/categories", categoriesRouter);
+  apiRouter.use("/recurring-rules", recurringRulesRouter);
   apiRouter.get("/me", requireAuth, meHandler);
 
   app.get("/health", (_req, res) => {
