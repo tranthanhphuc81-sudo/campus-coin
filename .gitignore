@@ -33,3 +33,9 @@ Thumbs.db
 
 # Local tooling
 *.local
+
+# Local/private documentation
+docs/ai-usage-log.private.md
+
+# TypeScript incremental build cache
+*.tsbuildinfo

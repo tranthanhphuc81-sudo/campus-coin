@@ -8,10 +8,12 @@ SRS yêu cầu khai báo mọi công cụ AI được sử dụng và nhấn m�
 
 | **Công cụ AI** | **Mục đích sử dụng** | **Phạm vi / Mức độ** | **Người kiểm duyệt** |
 | --- | --- | --- | --- |
-| Claude (Anthropic) | Rà soát tài liệu thiết kế theo SRS, đề xuất và thực hiện chỉnh sửa nội dung, vẽ lại sơ đồ kiến trúc, triển khai và luồng xử lý | Nhóm kiểm tra, đối chiếu với mã nguồn và giải thích được toàn bộ nội dung | … |
-| Gemini / OpenAI API (trong sản phẩm) | Tính năng phân loại và nhận định của ứng dụng | Theo thiết kế mục 3.4, 5.6, 5.9 | … |
+| <AI assistant used by team> | Hỗ trợ soạn thảo, rà soát tài liệu kỹ thuật và gợi ý mã nguồn | Mọi kết quả đều được đội kiểm tra thủ công trước khi đưa vào bản chính thức | <Reviewer> |
+| <AI provider used in product runtime, if any> | Hỗ trợ tính năng AI của sản phẩm theo đặc tả | Chỉ áp dụng cho phạm vi chức năng được phê duyệt trong thiết kế | <Reviewer> |
 
 **Lưu ý: **Tài liệu này là bản thiết kế tham chiếu. Nhóm phát triển cần xem xét, điều chỉnh theo hiện thực thực tế và có khả năng giải thích mọi quyết định thiết kế trước hội đồng đánh giá theo yêu cầu của SRS.
+
+Mẫu khai báo này nên được điền ở thời điểm phát hành chính thức, sau khi đội thống nhất danh sách công cụ và người kiểm duyệt.
 
 Trang 70
 
