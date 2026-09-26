@@ -42,7 +42,7 @@ export default function LoginPage() {
       await signInStudent(values);
       setFlash({ kind: "success", message: en.auth.login.successMessage });
       const from = location.state as { from?: string } | undefined;
-      navigate(from?.from ?? en.routes.home, { replace: true });
+      navigate(from?.from ?? en.routes.dashboard, { replace: true });
     } catch (error) {
       const problem = parseProblem(error);
       applyProblemToForm(setError, problem.fieldErrors);

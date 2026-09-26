@@ -63,7 +63,9 @@ function sourceLabel(source: Transaction["source"]): string {
 
 export default function TransactionsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeType, setActiveType] = useState<TransactionType>("expense");
+  const [activeType, setActiveType] = useState<TransactionType>(() =>
+    searchParams.get("type") === "income" ? "income" : "expense",
+  );
   const [month, setMonth] = useState(() => toMonthInput(new Date()));
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [flashMessage, setFlashMessage] = useState<string | null>(null);

@@ -11,13 +11,15 @@ export const en = {
     genericErrorDetail: "Please try again in a moment.",
   },
   routes: {
+    home: "/",
+    sitemap: "/sitemap",
     login: "/login",
     register: "/register",
     verifyEmail: "/verify-email",
     forgotPassword: "/forgot-password",
     resetPassword: "/reset-password",
     adminLogin: "/admin/login",
-    home: "/",
+    dashboard: "/dashboard",
     manageCategories: "/categories/manage",
     transactions: "/transactions",
     imports: "/imports",
@@ -34,6 +36,189 @@ export const en = {
     adminAnnouncements: "/admin/announcements",
     adminAuditLogs: "/admin/audit-logs",
   },
+  sitemap: {
+    title: "Campus Coin Sitemap",
+    subtitle: "Explore the public pages and tools available in Campus Coin.",
+    groups: { public: "Public", student: "Student", admin: "Admin" },
+    entries: {
+      landing: { label: "Home", description: "Learn how Campus Coin helps students manage money." },
+      sitemap: { label: "Sitemap", description: "Browse the complete Campus Coin page directory." },
+      login: { label: "Sign in", description: "Sign in to your student account." },
+      register: { label: "Create account", description: "Create a Campus Coin student account." },
+      verifyEmail: { label: "Verify email", description: "Verify your email address." },
+      forgotPassword: { label: "Forgot password", description: "Request a password reset link." },
+      resetPassword: {
+        label: "Reset password",
+        description: "Set a new password for your account.",
+      },
+      dashboard: {
+        label: "Dashboard",
+        description: "Review your balance, budgets, and recent activity.",
+      },
+      categories: { label: "Categories", description: "Organize income and spending categories." },
+      transactions: {
+        label: "Transactions",
+        description: "Record and review income and expenses.",
+      },
+      imports: {
+        label: "Import CSV",
+        description: "Bring transaction history in from a CSV file.",
+      },
+      budgets: { label: "Budgets", description: "Set monthly spending limits and track progress." },
+      reports: { label: "Reports", description: "Explore and export your spending reports." },
+      insights: {
+        label: "Insights",
+        description: "Review monthly spending patterns and insights.",
+      },
+      tips: { label: "Tips", description: "Find practical ideas for managing your money." },
+      saved: { label: "Saved", description: "Return to reports, tips, and insights you saved." },
+      profile: { label: "Profile", description: "Manage your profile and privacy preferences." },
+      adminLogin: {
+        label: "Admin sign in",
+        description: "Sign in to the Campus Coin admin portal.",
+      },
+      adminDashboard: {
+        label: "Admin dashboard",
+        description: "Review system activity and administration tools.",
+      },
+      adminUsers: { label: "Users", description: "Manage student accounts." },
+      adminCategories: {
+        label: "Default categories",
+        description: "Manage the default category library.",
+      },
+      adminTips: { label: "Tip templates", description: "Manage student tip templates." },
+      adminAnnouncements: {
+        label: "Announcements",
+        description: "Manage messages shown to students.",
+      },
+      adminAuditLogs: {
+        label: "Audit logs",
+        description: "Review the history of administrative actions.",
+      },
+    },
+  },
+  landing: {
+    eyebrow: "A money routine that fits student life",
+    title: "Smart Spending, Student Style",
+    description:
+      "Know where your money goes, make room for what matters, and feel more in control of every month.",
+    registerAction: "Get started free",
+    loginAction: "Sign in",
+    previewLabel: "A clearer view of your month",
+    previewBalanceLabel: "Available this month",
+    previewBalance: "$1,240.00",
+    previewCaption: "Your money, organized at a glance.",
+    featuresEyebrow: "Made for real student budgets",
+    featuresTitle: "Small habits. More breathing room.",
+    features: [
+      {
+        title: "Track every transaction",
+        description: "Log income and spending without losing the little details.",
+      },
+      {
+        title: "Import a CSV",
+        description: "Bring in a transaction file and review it before saving.",
+      },
+      {
+        title: "Set a budget",
+        description: "Choose monthly limits and see how much room is left.",
+      },
+      {
+        title: "Spot spending patterns",
+        description: "Turn your month into clear reports and useful trends.",
+      },
+      {
+        title: "Get practical tips",
+        description: "Find small, realistic ways to make your money go further.",
+      },
+      {
+        title: "Keep your data yours",
+        description: "AI suggestions are optional and privacy settings stay in your control.",
+      },
+    ],
+    stepsEyebrow: "Your first three moves",
+    stepsTitle: "Start with what you have.",
+    steps: [
+      {
+        title: "Add your monthly allowance",
+        description: "Record your allowance or other regular income to set a useful baseline.",
+        action: "Add income",
+      },
+      {
+        title: "Choose a savings goal",
+        description: "Set a monthly spending plan that leaves room for what you want to save.",
+        action: "Set a budget",
+      },
+      {
+        title: "Log your first expense",
+        description: "Add one purchase and start seeing your spending clearly.",
+        action: "Add an expense",
+      },
+    ],
+    aboutTitle: "About Campus Coin",
+    aboutDescription:
+      "Campus Coin is a student-friendly money tracker for everyday income, spending, budgets, and savings habits.",
+    termsTitle: "Terms of use",
+    termsDescription:
+      "Campus Coin is an educational budgeting tool. Its reports and AI-generated suggestions are for reference only, not financial advice.",
+    privacyTitle: "Privacy",
+    privacyDescription:
+      "AI features are optional. You can review and change your AI preference in your profile at any time.",
+    footerCopyright: "Made for student life.",
+    footerNavLabel: "About Campus Coin",
+    legalNavLabel: "Legal information",
+    sitemapBackAction: "Back to home",
+  },
+  tawkFaqs: [
+    {
+      question: "How do I add a transaction?",
+      answer:
+        "Open Transactions, select Add transaction, choose income or expense, then enter the amount, date, and category.",
+    },
+    {
+      question: "How do I import transactions from a CSV?",
+      answer:
+        "Open Import CSV, upload your file, map its columns, review any flagged rows, and confirm the import.",
+    },
+    {
+      question: "How do I set a budget?",
+      answer:
+        "Open Budgets, choose the month, enter a limit for each category, and save your budgets.",
+    },
+    {
+      question: "Can I set a savings goal?",
+      answer:
+        "Use your monthly budgets to set spending limits that support your savings goal, then review progress on your dashboard.",
+    },
+    {
+      question: "What data does AI use?",
+      answer:
+        "AI is optional. When enabled, limited transaction details may be sent to the configured AI provider for suggestions. Campus Coin calculates financial totals itself.",
+    },
+    {
+      question: "Can I turn AI off?",
+      answer:
+        "Yes. Open Profile and switch off AI suggestions. Your account and core budgeting tools continue to work.",
+    },
+    {
+      question: "Can I edit or delete a transaction?",
+      answer: "Open Transactions and use the actions beside the entry to edit or delete it.",
+    },
+    {
+      question: "How do I export a report?",
+      answer: "Open Reports and choose Export PDF or Export PNG.",
+    },
+    {
+      question: "Why is my dashboard empty?",
+      answer:
+        "Add a few transactions and budgets first. Your dashboard will fill in as your activity is recorded.",
+    },
+    {
+      question: "Who can see my financial data?",
+      answer:
+        "Your transactions and budgets are private to your account. Campus Coin does not connect to your bank.",
+    },
+  ],
   layout: {
     themeToggleAriaLabel: "Toggle dark mode",
     switchToLight: "Light mode",

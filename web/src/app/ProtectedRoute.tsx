@@ -20,11 +20,23 @@ export default function ProtectedRoute({ allow }: ProtectedRouteProps) {
   const loginPath = isAdminRoute ? en.routes.adminLogin : en.routes.login;
 
   if (!user) {
-    return <Navigate to={loginPath} replace state={{ from: location.pathname }} />;
+    return (
+      <Navigate
+        to={loginPath}
+        replace
+        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
+      />
+    );
   }
 
   if (!allow.includes(user.role)) {
-    return <Navigate to={loginPath} replace state={{ from: location.pathname }} />;
+    return (
+      <Navigate
+        to={loginPath}
+        replace
+        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
+      />
+    );
   }
 
   return <Outlet />;

@@ -4,6 +4,7 @@ import { getStudentBreadcrumbs } from "@/app/routes";
 import { useAuth } from "@/app/AuthProvider";
 import Breadcrumbs from "@/components/common/Breadcrumbs";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import TawkWidget from "@/components/common/TawkWidget";
 import ThemeControls from "@/layouts/ThemeControls";
 import { en } from "@/content/en";
 
@@ -16,7 +17,7 @@ export default function StudentLayout() {
   return (
     <div className="layout-shell student-layout">
       <header className="topbar">
-        <Link to={en.routes.home} className="brand-link">
+        <Link to={en.routes.dashboard} className="brand-link">
           {en.appName}
         </Link>
         <div className="topbar-actions">
@@ -33,7 +34,7 @@ export default function StudentLayout() {
           <nav>
             <ul>
               <li>
-                <Link to={en.routes.home}>{en.layout.studentNav.dashboard}</Link>
+                <Link to={en.routes.dashboard}>{en.layout.studentNav.dashboard}</Link>
               </li>
               <li>
                 <Link to={en.routes.manageCategories}>{en.layout.studentNav.categories}</Link>
@@ -73,7 +74,7 @@ export default function StudentLayout() {
       </div>
 
       <nav className="bottom-nav" aria-label={en.layout.studentBottomNavAriaLabel}>
-        <Link to={en.routes.home} className="bottom-nav__item">
+        <Link to={en.routes.dashboard} className="bottom-nav__item">
           {en.layout.studentNav.dashboard}
         </Link>
         <Link to={en.routes.transactions} className="bottom-nav__item">
@@ -105,6 +106,7 @@ export default function StudentLayout() {
       >
         +
       </button>
+      <TawkWidget />
     </div>
   );
 }
