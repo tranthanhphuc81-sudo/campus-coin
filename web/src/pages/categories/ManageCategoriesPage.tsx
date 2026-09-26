@@ -5,7 +5,7 @@ import {
   type CategoryType,
 } from "@campus-coin/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { en } from "@/content/en";
@@ -17,6 +17,7 @@ import {
 } from "@/features/categories/hooks";
 import LoadingButton from "@/components/common/LoadingButton";
 import { parseProblem } from "@/lib/problem";
+import { useDialogA11y } from "@/lib/useDialogA11y";
 
 type CategoryFormValues = {
   name: string;
@@ -47,6 +48,8 @@ export default function ManageCategoriesPage() {
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
   const [reassignTo, setReassignTo] = useState<number | undefined>(undefined);
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
+  const editorDialogRef = useRef<HTMLDivElement | null>(null);
+  const deleteDialogRef = useRef<HTMLDivElement | null>(null);
 
   const categoriesQuery = useCategories(activeType);
   const createCategoryMutation = useCreateCategory();
@@ -108,6 +111,21 @@ export default function ManageCategoriesPage() {
     setEditingCategory(null);
     form.clearErrors();
   };
+
+  useDialogA11y({
+    isOpen: Boolean(editingCategory),
+    containerRef: editorDialogRef,
+    onClose: closeModal,
+  });
+
+  useDialogA11y({
+    isOpen: Boolean(deletingCategory),
+    containerRef: deleteDialogRef,
+    onClose: () => {
+      setDeletingCategory(null);
+      setReassignTo(undefined);
+    },
+  });
 
   const submitCategory = form.handleSubmit(async (values) => {
     setFlashMessage(null);
@@ -254,6 +272,7 @@ export default function ManageCategoriesPage() {
       {editingCategory ? (
         <div className="dialog-backdrop" role="presentation">
           <div
+            ref={editorDialogRef}
             className="dialog"
             role="dialog"
             aria-modal="true"
@@ -266,9 +285,15 @@ export default function ManageCategoriesPage() {
             <form className="form-stack" onSubmit={submitCategory} noValidate>
               <div className="form-field">
                 <label htmlFor="category-name">{en.categories.form.nameLabel}</label>
-                <input id="category-name" type="text" {...form.register("name")} />
+                <input
+                  id="category-name"
+                  type="text"
+                  aria-invalid={Boolean(form.formState.errors.name)}
+                  aria-describedby={form.formState.errors.name ? "category-name-error" : undefined}
+                  {...form.register("name")}
+                />
                 {form.formState.errors.name ? (
-                  <p className="form-error" role="alert">
+                  <p id="category-name-error" className="form-error" role="alert">
                     {form.formState.errors.name.message}
                   </p>
                 ) : null}
@@ -297,10 +322,19 @@ export default function ManageCategoriesPage() {
                   type="number"
                   min={0}
                   max={999}
+                  aria-invalid={Boolean(form.formState.errors.sortOrder)}
+                  aria-describedby={
+                    form.formState.errors.sortOrder ? "category-order-error" : undefined
+                  }
                   {...form.register("sortOrder", {
                     valueAsNumber: true,
                   })}
                 />
+                {form.formState.errors.sortOrder ? (
+                  <p id="category-order-error" className="form-error" role="alert">
+                    {form.formState.errors.sortOrder.message}
+                  </p>
+                ) : null}
               </div>
 
               <div className="dialog-actions">
@@ -323,6 +357,7 @@ export default function ManageCategoriesPage() {
       {deletingCategory ? (
         <div className="dialog-backdrop" role="presentation">
           <div
+            ref={deleteDialogRef}
             className="dialog"
             role="dialog"
             aria-modal="true"

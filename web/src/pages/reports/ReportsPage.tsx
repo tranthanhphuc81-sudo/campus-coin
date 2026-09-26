@@ -17,6 +17,7 @@ import {
 import { useCategories } from "@/features/categories/hooks";
 import { formatMoney } from "@/lib/money";
 import { parseProblem } from "@/lib/problem";
+import { useDialogA11y } from "@/lib/useDialogA11y";
 
 type ReportTab = "category" | "income-expense" | "daily-weekly" | "forecast";
 type DateRangePreset = "this-month" | "last-month" | "last-3-months" | "last-6-months";
@@ -112,6 +113,7 @@ export default function ReportsPage() {
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareSuccess, setShareSuccess] = useState<string | null>(null);
   const reportAreaRef = useRef<HTMLDivElement | null>(null);
+  const shareDialogRef = useRef<HTMLDivElement | null>(null);
   const shareMonthlyReportMutation = useShareMonthlyReport();
 
   const tab = sanitizeTab(searchParams.get("tab"));
@@ -230,6 +232,12 @@ export default function ReportsPage() {
     setIsShareModalOpen(false);
   };
 
+  useDialogA11y({
+    isOpen: isShareModalOpen,
+    containerRef: shareDialogRef,
+    onClose: closeShareModal,
+  });
+
   const submitShareReport = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setShareError(null);
@@ -289,6 +297,7 @@ export default function ReportsPage() {
       {isShareModalOpen ? (
         <div className="dialog-backdrop" role="presentation">
           <div
+            ref={shareDialogRef}
             className="dialog"
             role="dialog"
             aria-modal="true"
@@ -310,13 +319,15 @@ export default function ReportsPage() {
                   id="share-report-email"
                   type="email"
                   required
+                  aria-invalid={Boolean(shareError)}
+                  aria-describedby={shareError ? "share-report-email-error" : undefined}
                   value={shareEmail}
                   onChange={(event) => setShareEmail(event.target.value)}
                 />
               </div>
 
               {shareError ? (
-                <p className="form-error" role="alert">
+                <p id="share-report-email-error" className="form-error" role="alert">
                   {shareError}
                 </p>
               ) : null}

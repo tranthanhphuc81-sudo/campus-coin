@@ -6,6 +6,7 @@ import {
   useReadAllNotifications,
   useReadNotification,
 } from "@/features/notifications/hooks";
+import { useDialogA11y } from "@/lib/useDialogA11y";
 
 function formatDateTime(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -24,6 +25,8 @@ type ToastItem = {
 export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const dropdownId = "notification-dropdown";
   const seenBudgetNotifications = useRef<Set<string>>(new Set());
   const initialized = useRef(false);
 
@@ -94,12 +97,20 @@ export default function NotificationBell() {
     };
   }, [toasts]);
 
+  useDialogA11y({
+    isOpen,
+    containerRef: dropdownRef,
+    onClose: () => setIsOpen(false),
+  });
+
   return (
     <div className="notification-bell">
       <button
         type="button"
         className="btn btn-outline notification-bell__toggle"
         aria-label={en.notifications.bellAriaLabel}
+        aria-expanded={isOpen}
+        aria-controls={dropdownId}
         onClick={() => {
           setIsOpen((prev) => !prev);
         }}
@@ -110,12 +121,22 @@ export default function NotificationBell() {
 
       {isOpen ? (
         <div
+          ref={dropdownRef}
+          id={dropdownId}
           className="notification-dropdown"
           role="dialog"
           aria-label={en.notifications.dropdownTitle}
         >
           <div className="notification-dropdown__header">
             <strong>{en.notifications.dropdownTitle}</strong>
+            <button
+              type="button"
+              className="btn btn-outline"
+              aria-label={en.notifications.closeDropdownAriaLabel}
+              onClick={() => setIsOpen(false)}
+            >
+              <span aria-hidden="true">x</span>
+            </button>
             <button
               type="button"
               className="btn btn-outline"
@@ -157,7 +178,7 @@ export default function NotificationBell() {
 
       <div className="notification-toast-stack" aria-live="polite" aria-atomic="true">
         {toasts.map((toast) => (
-          <div key={toast.id} className="notification-toast">
+          <div key={toast.id} className="notification-toast" role="status">
             <strong>{en.notifications.toastTitle}</strong>
             <p>{toast.message}</p>
           </div>

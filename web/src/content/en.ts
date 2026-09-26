@@ -220,6 +220,7 @@ export const en = {
     },
   ],
   layout: {
+    skipToMainContent: "Skip to main content",
     themeToggleAriaLabel: "Toggle dark mode",
     switchToLight: "Light mode",
     switchToDark: "Dark mode",
@@ -388,6 +389,7 @@ export const en = {
   notifications: {
     bellAriaLabel: "Open notifications",
     dropdownTitle: "Notifications",
+    closeDropdownAriaLabel: "Close notifications",
     markAllReadAction: "Mark all read",
     emptyState: "You're all caught up.",
     toastTitle: "Budget notification",

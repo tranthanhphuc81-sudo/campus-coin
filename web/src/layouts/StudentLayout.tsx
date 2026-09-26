@@ -16,6 +16,9 @@ export default function StudentLayout() {
 
   return (
     <div className="layout-shell student-layout">
+      <a href="#main-content" className="skip-link">
+        {en.layout.skipToMainContent}
+      </a>
       <header className="topbar">
         <Link to={en.routes.dashboard} className="brand-link">
           {en.appName}

@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 
 import { en } from "@/content/en";
 import {
@@ -9,6 +9,7 @@ import {
   type BookmarkTargetType,
 } from "@/features/bookmarks/hooks";
 import { parseProblem } from "@/lib/problem";
+import { useDialogA11y } from "@/lib/useDialogA11y";
 
 type BookmarkButtonProps = {
   targetType: BookmarkTargetType;
@@ -25,6 +26,13 @@ export default function BookmarkButton({ targetType, targetRef, ariaLabel }: Boo
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [note, setNote] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+
+  useDialogA11y({
+    isOpen: isDialogOpen,
+    containerRef: dialogRef,
+    onClose: () => setIsDialogOpen(false),
+  });
 
   const existingBookmark = useMemo(
     () => bookmarkQuery.data?.items[0] ?? null,
@@ -92,6 +100,7 @@ export default function BookmarkButton({ targetType, targetRef, ariaLabel }: Boo
       {isDialogOpen ? (
         <div className="dialog-backdrop" role="presentation">
           <div
+            ref={dialogRef}
             className="dialog"
             role="dialog"
             aria-modal="true"

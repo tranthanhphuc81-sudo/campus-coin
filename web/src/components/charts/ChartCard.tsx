@@ -30,7 +30,7 @@ export default function ChartCard({
 
       <div className="chart-card__body">{children}</div>
 
-      <div className="chart-card__sr-table" aria-hidden="true">
+      <div className="chart-card__sr-table">
         <table>
           <caption>{tableCaption}</caption>
           <thead>

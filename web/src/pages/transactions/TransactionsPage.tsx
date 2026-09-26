@@ -24,6 +24,7 @@ import {
 import LoadingButton from "@/components/common/LoadingButton";
 import { formatMoney } from "@/lib/money";
 import { parseProblem } from "@/lib/problem";
+import { useDialogA11y } from "@/lib/useDialogA11y";
 import api from "@/lib/api";
 import { useProfile } from "@/features/profile/hooks";
 
@@ -76,6 +77,7 @@ export default function TransactionsPage() {
   } | null>(null);
   const autoOpenCreateHandled = useRef(false);
   const [manualCategorySelection, setManualCategorySelection] = useState(false);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const profileQuery = useProfile();
 
   const expenseCategoriesQuery = useCategories("expense" as CategoryType);
@@ -306,6 +308,12 @@ export default function TransactionsPage() {
     setEditingTransaction(null);
     form.clearErrors();
   };
+
+  useDialogA11y({
+    isOpen: Boolean(editingTransaction),
+    containerRef: dialogRef,
+    onClose: closeDialog,
+  });
 
   const submitForm = form.handleSubmit(async (values) => {
     setFlashMessage(null);
@@ -577,6 +585,7 @@ export default function TransactionsPage() {
       {editingTransaction ? (
         <div className="dialog-backdrop" role="presentation">
           <div
+            ref={dialogRef}
             className="dialog"
             role="dialog"
             aria-modal="true"
@@ -592,6 +601,10 @@ export default function TransactionsPage() {
                 <select
                   id="transaction-category"
                   className="field-select"
+                  aria-invalid={Boolean(form.formState.errors.categoryId)}
+                  aria-describedby={
+                    form.formState.errors.categoryId ? "transaction-category-error" : undefined
+                  }
                   {...form.register("categoryId", {
                     valueAsNumber: true,
                     onChange: () => {
@@ -606,7 +619,7 @@ export default function TransactionsPage() {
                   ))}
                 </select>
                 {form.formState.errors.categoryId ? (
-                  <p className="form-error" role="alert">
+                  <p id="transaction-category-error" className="form-error" role="alert">
                     {form.formState.errors.categoryId.message}
                   </p>
                 ) : null}
@@ -647,10 +660,14 @@ export default function TransactionsPage() {
                   id="transaction-amount"
                   type="text"
                   inputMode="decimal"
+                  aria-invalid={Boolean(form.formState.errors.amount)}
+                  aria-describedby={
+                    form.formState.errors.amount ? "transaction-amount-error" : undefined
+                  }
                   {...form.register("amount")}
                 />
                 {form.formState.errors.amount ? (
-                  <p className="form-error" role="alert">
+                  <p id="transaction-amount-error" className="form-error" role="alert">
                     {form.formState.errors.amount.message}
                   </p>
                 ) : null}
@@ -658,9 +675,17 @@ export default function TransactionsPage() {
 
               <div className="form-field">
                 <label htmlFor="transaction-date">{en.transactions.form.dateLabel}</label>
-                <input id="transaction-date" type="date" {...form.register("txnDate")} />
+                <input
+                  id="transaction-date"
+                  type="date"
+                  aria-invalid={Boolean(form.formState.errors.txnDate)}
+                  aria-describedby={
+                    form.formState.errors.txnDate ? "transaction-date-error" : undefined
+                  }
+                  {...form.register("txnDate")}
+                />
                 {form.formState.errors.txnDate ? (
-                  <p className="form-error" role="alert">
+                  <p id="transaction-date-error" className="form-error" role="alert">
                     {form.formState.errors.txnDate.message}
                   </p>
                 ) : null}

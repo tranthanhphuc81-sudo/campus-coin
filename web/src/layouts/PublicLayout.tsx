@@ -12,6 +12,9 @@ export default function PublicLayout() {
 
   return (
     <div className="layout-shell">
+      <a href="#main-content" className="skip-link">
+        {en.layout.skipToMainContent}
+      </a>
       <header className="topbar">
         <Link to={en.routes.home} className="brand-link">
           {en.appName}
