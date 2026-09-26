@@ -92,6 +92,12 @@ enum UserTipStatus {
     DISMISSED
 }
 
+enum BookmarkTargetType {
+    TIP
+    INSIGHT
+    REPORT
+}
+
 model User {
     id                  String               @id @db.Char(36)
     fullName            String               @map("full_name") @db.VarChar(120)
@@ -119,8 +125,24 @@ model User {
     aiUsageDaily        AiUsageDaily[]
     tipTemplatesCreated TipTemplate[]
     userTips            UserTip[]
+    bookmarks           Bookmark[]
 
     @@map("users")
+}
+
+model Bookmark {
+    id         BigInt             @id @default(autoincrement())
+    userId     String             @map("user_id") @db.Char(36)
+    targetType BookmarkTargetType @map("target_type")
+    targetRef  String             @map("target_ref") @db.VarChar(255)
+    note       String?            @db.VarChar(500)
+    createdAt  DateTime           @default(now()) @map("created_at")
+    updatedAt  DateTime           @updatedAt @map("updated_at")
+    user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([userId, targetType, targetRef], map: "uq_bookmarks_user_target")
+    @@index([userId, targetType, createdAt], map: "idx_bookmarks_user_type_created")
+    @@map("bookmarks")
 }
 
 model RefreshToken {

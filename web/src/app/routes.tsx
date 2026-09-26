@@ -15,6 +15,7 @@ import StudentHomePage from "@/pages/home/StudentHomePage";
 import ImportsPage from "@/pages/imports/ImportsPage";
 import InsightsPage from "@/pages/insights/InsightsPage";
 import TipsPage from "@/pages/tips/TipsPage";
+import SavedPage from "@/pages/saved/SavedPage";
 import ReportsPage from "@/pages/reports/ReportsPage";
 import ProfilePage from "@/pages/profile/ProfilePage";
 import TransactionsPage from "@/pages/transactions/TransactionsPage";
@@ -78,6 +79,11 @@ export const studentRoutes: AppRouteConfig[] = [
     path: en.routes.tips,
     element: <TipsPage />,
     handle: { crumb: en.layout.studentNav.tips },
+  },
+  {
+    path: en.routes.saved,
+    element: <SavedPage />,
+    handle: { crumb: en.layout.studentNav.saved },
   },
   {
     path: en.routes.profile,

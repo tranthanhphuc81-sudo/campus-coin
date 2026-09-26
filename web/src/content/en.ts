@@ -25,6 +25,7 @@ export const en = {
     reports: "/reports",
     insights: "/insights",
     tips: "/tips",
+    saved: "/saved",
     profile: "/profile",
     adminHome: "/admin",
   },
@@ -46,6 +47,7 @@ export const en = {
       reports: "Reports",
       insights: "Insights",
       tips: "Tips",
+      saved: "Saved",
       settings: "Profile",
     },
   },
@@ -351,6 +353,7 @@ export const en = {
     exportPngAction: "Export PNG",
     exportPdfAction: "Export PDF",
     shareEmailAction: "Share via email",
+    bookmarkAction: "Bookmark report",
     summaryTitle: "Summary",
     totalAmountLabel: "Total amount",
     totalTransactionsLabel: "Total transactions",
@@ -433,8 +436,7 @@ export const en = {
     },
     actions: {
       regenerate: "Regenerate",
-      bookmark: "Bookmark",
-      bookmarked: "Bookmarked",
+      bookmark: "Bookmark insight",
     },
     messages: {
       regenerateAccepted: "Insight regeneration has been queued.",
@@ -454,6 +456,42 @@ export const en = {
       dismiss: "Dismiss",
       save: "Save",
     },
+  },
+  bookmarks: {
+    actions: {
+      bookmark: "Bookmark",
+      bookmarked: "Bookmarked",
+      openDialog: "Open bookmark options",
+      save: "Save",
+      remove: "Remove",
+      cancel: "Cancel",
+    },
+    dialog: {
+      createTitle: "Save bookmark",
+      editTitle: "Edit bookmark",
+      description: "Add a personal note so you can find this item later.",
+      noteLabel: "Note",
+      noteCounter: "{count}/500 characters",
+    },
+    messages: {
+      saveFailed: "Unable to save bookmark.",
+      deleteFailed: "Unable to remove bookmark.",
+    },
+  },
+  saved: {
+    title: "Saved",
+    subtitle: "Review your bookmarked tips, insights, and reports.",
+    tabsAriaLabel: "Saved item types",
+    tabs: {
+      tip: "Tips",
+      insight: "Insights",
+      report: "Reports",
+    },
+    searchLabel: "Search note",
+    searchPlaceholder: "Find bookmarks by note",
+    openAction: "Open",
+    noNote: "No note",
+    emptyState: "No saved items match your filters.",
   },
 };
 

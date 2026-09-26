@@ -29,6 +29,7 @@ import { insightsRouter } from "./modules/insights/routes.js";
 import { tipsRouter } from "./modules/tips/routes.js";
 import { forecastRouter } from "./modules/forecast/routes.js";
 import { activityRouter } from "./modules/activity/routes.js";
+import { bookmarksRouter } from "./modules/bookmarks/routes.js";
 import { validate } from "./middlewares/validate.js";
 
 export function createApp() {
@@ -104,6 +105,7 @@ export function createApp() {
   apiRouter.use("/ai", aiRouter);
   apiRouter.use("/insights", insightsRouter);
   apiRouter.use("/tips", tipsRouter);
+  apiRouter.use("/bookmarks", bookmarksRouter);
   apiRouter.get("/me", requireAuth, meHandler);
   apiRouter.patch("/me", requireAuth, validate({ body: updateProfileSchema }), patchMeHandler);
 

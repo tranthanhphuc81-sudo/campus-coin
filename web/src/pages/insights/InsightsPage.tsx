@@ -1,18 +1,20 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
+import BookmarkButton from "@/components/bookmarks/BookmarkButton";
 import { en } from "@/content/en";
 import { useInsightDetail, useInsightsList, useRegenerateInsight } from "@/features/insights/hooks";
 import { parseProblem } from "@/lib/problem";
 
 export default function InsightsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const insightsQuery = useInsightsList();
   const regenerateMutation = useRegenerateInsight();
-  const [bookmarkState, setBookmarkState] = useState<Record<string, boolean>>({});
   const [regenerateMessage, setRegenerateMessage] = useState<string | null>(null);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
   const items = useMemo(() => insightsQuery.data ?? [], [insightsQuery.data]);
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(searchParams.get("month"));
 
   const effectiveSelectedMonth = useMemo(() => {
     if (selectedMonth && items.some((item) => item.month === selectedMonth)) {
@@ -22,15 +24,29 @@ export default function InsightsPage() {
     return items[0]?.month ?? null;
   }, [items, selectedMonth]);
 
+  useEffect(() => {
+    const monthFromQuery = searchParams.get("month");
+    if (monthFromQuery && monthFromQuery !== selectedMonth) {
+      setSelectedMonth(monthFromQuery);
+    }
+  }, [searchParams, selectedMonth]);
+
+  useEffect(() => {
+    if (!effectiveSelectedMonth) {
+      return;
+    }
+
+    if (searchParams.get("month") === effectiveSelectedMonth) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("month", effectiveSelectedMonth);
+    setSearchParams(nextParams, { replace: true });
+  }, [effectiveSelectedMonth, searchParams, setSearchParams]);
+
   const detailQuery = useInsightDetail(effectiveSelectedMonth);
   const detail = detailQuery.data;
-
-  const toggleBookmark = (month: string) => {
-    setBookmarkState((previous) => ({
-      ...previous,
-      [month]: !previous[month],
-    }));
-  };
 
   const regenerate = async () => {
     if (!effectiveSelectedMonth) {
@@ -70,7 +86,12 @@ export default function InsightsPage() {
                 <button
                   type="button"
                   className={item.month === effectiveSelectedMonth ? "is-active" : ""}
-                  onClick={() => setSelectedMonth(item.month)}
+                  onClick={() => {
+                    setSelectedMonth(item.month);
+                    const nextParams = new URLSearchParams(searchParams);
+                    nextParams.set("month", item.month);
+                    setSearchParams(nextParams, { replace: true });
+                  }}
                 >
                   <span>{item.month}</span>
                   <small>{item.status}</small>
@@ -107,16 +128,11 @@ export default function InsightsPage() {
                     {en.insights.actions.regenerate}
                   </button>
 
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    aria-pressed={bookmarkState[detail.month] === true}
-                    onClick={() => toggleBookmark(detail.month)}
-                  >
-                    {bookmarkState[detail.month]
-                      ? en.insights.actions.bookmarked
-                      : en.insights.actions.bookmark}
-                  </button>
+                  <BookmarkButton
+                    targetType="insight"
+                    targetRef={detail.month}
+                    ariaLabel={en.insights.actions.bookmark}
+                  />
                 </div>
               </header>
 

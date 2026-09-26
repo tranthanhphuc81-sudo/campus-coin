@@ -2,6 +2,7 @@ import { DoughnutChart, GroupedBarChart, LineChart } from "@/components/charts";
 import WidgetErrorBoundary from "@/components/common/WidgetErrorBoundary";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import BookmarkButton from "@/components/bookmarks/BookmarkButton";
 import { en } from "@/content/en";
 import { useDashboardSummary, useRecentActivity } from "@/features/analytics/hooks";
 import { useDismissTip, usePinTip, useUnpinTip } from "@/features/tips/hooks";
@@ -82,16 +83,6 @@ function TipActionButtons({ tipId, status }: TipActionButtonsProps) {
           >
             {en.tips.actions.pin}
           </button>
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={() => {
-              void pinMutation.mutateAsync(tipId);
-            }}
-            disabled={isBusy}
-          >
-            {en.tips.actions.save}
-          </button>
         </>
       )}
 
@@ -105,6 +96,12 @@ function TipActionButtons({ tipId, status }: TipActionButtonsProps) {
       >
         {en.tips.actions.dismiss}
       </button>
+
+      <BookmarkButton
+        targetType="tip"
+        targetRef={tipId}
+        ariaLabel={en.bookmarks.actions.bookmark}
+      />
     </div>
   );
 }

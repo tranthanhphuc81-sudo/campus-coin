@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 
 import { DoughnutChart, GroupedBarChart, LineChart } from "@/components/charts";
 import LoadingButton from "@/components/common/LoadingButton";
+import BookmarkButton from "@/components/bookmarks/BookmarkButton";
 import { en } from "@/content/en";
 import {
   exportMonthlyReportPdf,
@@ -159,6 +160,13 @@ export default function ReportsPage() {
     }));
   }, [categoryReportQuery.data?.items]);
 
+  const reportBookmarkRef = useMemo(() => {
+    const serialized = searchParams.toString();
+    return serialized.length > 0
+      ? serialized
+      : "tab=category&range=this-month&type=expense&source=all";
+  }, [searchParams]);
+
   const updateFilters = (next: Record<string, string | undefined>) => {
     const params = new URLSearchParams(searchParams);
 
@@ -268,6 +276,12 @@ export default function ReportsPage() {
         <button type="button" className="btn btn-outline" onClick={openShareModal}>
           {en.reports.shareEmailAction}
         </button>
+
+        <BookmarkButton
+          targetType="report"
+          targetRef={reportBookmarkRef}
+          ariaLabel={en.reports.bookmarkAction}
+        />
       </header>
 
       {pdfExportError ? <p className="flash-error">{pdfExportError}</p> : null}

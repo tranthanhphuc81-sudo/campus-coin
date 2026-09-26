@@ -1,4 +1,5 @@
 import { en } from "@/content/en";
+import BookmarkButton from "@/components/bookmarks/BookmarkButton";
 import {
   useDismissTip,
   usePinTip,
@@ -93,6 +94,7 @@ export default function TipsPage() {
               {en.tips.impactLabel}: {formatMoney(tip.impactAmount)}
             </p>
             <TipActions tip={tip} />
+            <BookmarkButton targetType="tip" targetRef={tip.id} />
           </article>
         ))}
       </div>
