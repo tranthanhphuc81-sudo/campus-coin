@@ -242,13 +242,59 @@ describe("Budgets and notifications endpoints", () => {
 
 describe("Budget alerts dedupe rules", () => {
   beforeEach(async () => {
-    await prisma.notification.deleteMany();
-    await prisma.budget.deleteMany();
-    await prisma.transaction.deleteMany();
-    await prisma.recurringRule.deleteMany();
-    await prisma.category.deleteMany();
-    await prisma.refreshToken.deleteMany();
-    await prisma.user.deleteMany();
+    await prisma.notification.deleteMany({
+      where: {
+        user: {
+          email: { in: [...TEST_EMAILS] },
+        },
+      },
+    });
+
+    await prisma.budget.deleteMany({
+      where: {
+        user: {
+          email: { in: [...TEST_EMAILS] },
+        },
+      },
+    });
+
+    await prisma.transaction.deleteMany({
+      where: {
+        user: {
+          email: { in: [...TEST_EMAILS] },
+        },
+      },
+    });
+
+    await prisma.recurringRule.deleteMany({
+      where: {
+        user: {
+          email: { in: [...TEST_EMAILS] },
+        },
+      },
+    });
+
+    await prisma.category.deleteMany({
+      where: {
+        user: {
+          email: { in: [...TEST_EMAILS] },
+        },
+      },
+    });
+
+    await prisma.refreshToken.deleteMany({
+      where: {
+        user: {
+          email: { in: [...TEST_EMAILS] },
+        },
+      },
+    });
+
+    await prisma.user.deleteMany({
+      where: {
+        email: { in: [...TEST_EMAILS] },
+      },
+    });
   });
 
   afterAll(async () => {

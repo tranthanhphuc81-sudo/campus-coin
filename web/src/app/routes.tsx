@@ -12,6 +12,7 @@ import BudgetsPage from "@/pages/budgets/BudgetsPage";
 import ManageCategoriesPage from "@/pages/categories/ManageCategoriesPage";
 import AdminHomePage from "@/pages/home/AdminHomePage";
 import StudentHomePage from "@/pages/home/StudentHomePage";
+import ImportsPage from "@/pages/imports/ImportsPage";
 import ReportsPage from "@/pages/reports/ReportsPage";
 import ProfilePage from "@/pages/profile/ProfilePage";
 import TransactionsPage from "@/pages/transactions/TransactionsPage";
@@ -50,6 +51,11 @@ export const studentRoutes: AppRouteConfig[] = [
     path: en.routes.transactions,
     element: <TransactionsPage />,
     handle: { crumb: en.layout.studentNav.transactions },
+  },
+  {
+    path: en.routes.imports,
+    element: <ImportsPage />,
+    handle: { crumb: en.layout.studentNav.imports },
   },
   {
     path: en.routes.budgets,

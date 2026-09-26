@@ -14,18 +14,23 @@
     "db:studio": "prisma studio --config prisma.config.ts --schema prisma/schema.prisma",
     "db:seed": "prisma db seed --config prisma.config.ts --schema prisma/schema.prisma"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed/index.ts"
+  },
   "dependencies": {
     "@campus-coin/shared": "file:../packages/shared",
-    "@prisma/client": "^6.19.0",
+    "@prisma/client": "6.12.0",
     "@types/nodemailer": "^8.0.2",
     "argon2": "^0.45.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
+    "csv-parse": "7.0.3",
     "dotenv": "^18.0.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
     "jose": "^6.2.12",
+    "multer": "^2.0.2",
     "node-cron": "^4.6.0",
     "nodemailer": "^10.0.10",
     "pdfmake": "^0.2.20",
@@ -38,9 +43,10 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.0.0",
     "@types/node": "^26.6.2",
     "@types/supertest": "^7.2.1",
-    "prisma": "^6.19.0",
+    "prisma": "6.12.0",
     "supertest": "^7.3.0",
     "tsx": "^4.23.15",
     "vitest": "^5.0.1"

@@ -137,6 +137,7 @@ model Category {
     recurringRules  RecurringRule[]
     budgets         Budget[]
     aiCategoryRules AiCategoryRule[]
+    importRows      ImportRow[]
 
     @@unique([userId, type, name], map: "uq_categories_user_type_name")
     @@index([userId, type, isActive], map: "idx_categories_user_type_active")
@@ -232,17 +233,52 @@ model Notification {
 }
 
 model ImportBatch {
-    id           String            @id @db.Char(36)
-    userId       String            @map("user_id") @db.Char(36)
-    status       ImportBatchStatus
-    committedAt  DateTime?         @map("committed_at")
-    createdAt    DateTime          @default(now()) @map("created_at")
-    updatedAt    DateTime          @updatedAt @map("updated_at")
-    user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-    transactions Transaction[]
+    id               String            @id @db.Char(36)
+    userId           String            @map("user_id") @db.Char(36)
+    originalFilename String            @map("original_filename") @db.VarChar(255)
+    fileSha256       String            @map("file_sha256") @db.Char(64)
+    status           ImportBatchStatus
+    totalRows        Int               @default(0) @map("total_rows")
+    validRows        Int               @default(0) @map("valid_rows")
+    committedRows    Int               @default(0) @map("committed_rows")
+    errorReport      Json?             @map("error_report")
+    committedAt      DateTime?         @map("committed_at")
+    createdAt        DateTime          @default(now()) @map("created_at")
+    updatedAt        DateTime          @updatedAt @map("updated_at")
+    user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+    transactions     Transaction[]
+    rows             ImportRow[]
 
+    @@unique([userId, fileSha256], map: "uq_import_batches_user_sha256")
     @@index([status, updatedAt], map: "idx_import_batches_status_updated_at")
     @@map("import_batches")
+}
+
+model ImportRow {
+    id            BigInt           @id @default(autoincrement())
+    importBatchId String           @map("import_batch_id") @db.Char(36)
+    rowNumber     Int              @map("row_number")
+    dateRaw       String?          @map("date_raw") @db.VarChar(100)
+    amountRaw     String?          @map("amount_raw") @db.VarChar(100)
+    typeRaw       String?          @map("type_raw") @db.VarChar(32)
+    description   String?          @db.VarChar(255)
+    categoryRaw   String?          @map("category_raw") @db.VarChar(120)
+    txnDate       DateTime?        @map("txn_date") @db.Date
+    amount        Decimal?         @db.Decimal(14, 2)
+    type          TransactionType?
+    merchantKey   String?          @map("merchant_key") @db.VarChar(100)
+    categoryId    Int?             @map("category_id")
+    selected      Boolean          @default(true)
+    isDuplicate   Boolean          @default(false) @map("is_duplicate")
+    errors        Json?
+    createdAt     DateTime         @default(now()) @map("created_at")
+    updatedAt     DateTime         @updatedAt @map("updated_at")
+    importBatch   ImportBatch      @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+    category      Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+    @@index([importBatchId, rowNumber], map: "idx_import_rows_batch_row")
+    @@index([importBatchId, selected], map: "idx_import_rows_batch_selected")
+    @@map("import_rows")
 }
 
 model IdempotencyKey {

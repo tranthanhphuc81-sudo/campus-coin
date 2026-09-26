@@ -23,6 +23,7 @@ import { recurringRulesRouter } from "./modules/recurring-rules/routes.js";
 import { dashboardRouter, reportsRouter } from "./modules/analytics/routes.js";
 import { transactionsRouter } from "./modules/transactions/routes.js";
 import { aiRouter } from "./modules/ai/routes.js";
+import { importsRouter } from "./modules/imports/routes.js";
 import { validate } from "./middlewares/validate.js";
 
 export function createApp() {
@@ -86,6 +87,7 @@ export function createApp() {
   apiRouter.use("/admin/auth", adminAuthRouter);
   apiRouter.use("/categories", categoriesRouter);
   apiRouter.use("/transactions", transactionsRouter);
+  apiRouter.use("/imports", importsRouter);
   apiRouter.use("/recurring-rules", recurringRulesRouter);
   apiRouter.use("/budgets", budgetsRouter);
   apiRouter.use("/notifications", notificationsRouter);

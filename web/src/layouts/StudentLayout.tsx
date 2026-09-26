@@ -42,6 +42,9 @@ export default function StudentLayout() {
                 <Link to={en.routes.transactions}>{en.layout.studentNav.transactions}</Link>
               </li>
               <li>
+                <Link to={en.routes.imports}>{en.layout.studentNav.imports}</Link>
+              </li>
+              <li>
                 <Link to={en.routes.budgets}>{en.layout.studentNav.budgets}</Link>
               </li>
               <li>
@@ -69,6 +72,9 @@ export default function StudentLayout() {
         </Link>
         <Link to={en.routes.transactions} className="bottom-nav__item">
           {en.layout.studentNav.transactions}
+        </Link>
+        <Link to={en.routes.imports} className="bottom-nav__item">
+          {en.layout.studentNav.imports}
         </Link>
         <Link to={en.routes.budgets} className="bottom-nav__item">
           {en.layout.studentNav.budgets}

@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import request from "supertest";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -7,10 +8,7 @@ import { prisma } from "../src/lib/prisma.js";
 const APP = createApp();
 const PASSWORD = "Password#1234";
 
-const TEST_EMAILS = [
-  "rr.owner@campus-coin.local",
-  "rr.other@campus-coin.local",
-] as const;
+const TEST_EMAILS = ["rr.owner@campus-coin.local", "rr.other@campus-coin.local"] as const;
 
 async function registerAndLogin(email: string, fullName: string) {
   await request(APP).post("/api/v1/auth/register").send({
@@ -31,45 +29,66 @@ async function registerAndLogin(email: string, fullName: string) {
   };
 }
 
+async function cleanupTestDataWithRetry(maxAttempts = 3): Promise<void> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await prisma.transaction.deleteMany({
+        where: {
+          user: {
+            email: { in: [...TEST_EMAILS] },
+          },
+        },
+      });
+
+      await prisma.recurringRule.deleteMany({
+        where: {
+          user: {
+            email: { in: [...TEST_EMAILS] },
+          },
+        },
+      });
+
+      await prisma.category.deleteMany({
+        where: {
+          user: {
+            email: { in: [...TEST_EMAILS] },
+          },
+        },
+      });
+
+      await prisma.refreshToken.deleteMany({
+        where: {
+          user: {
+            email: { in: [...TEST_EMAILS] },
+          },
+        },
+      });
+
+      await prisma.user.deleteMany({
+        where: {
+          email: { in: [...TEST_EMAILS] },
+        },
+      });
+
+      return;
+    } catch (error) {
+      const isRetryableConflict =
+        error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
+
+      if (!isRetryableConflict || attempt === maxAttempts) {
+        throw error;
+      }
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, 80 * attempt);
+      });
+    }
+  }
+}
+
 describe("Recurring rules endpoints", () => {
   beforeEach(async () => {
-    await prisma.transaction.deleteMany({
-      where: {
-        user: {
-          email: { in: [...TEST_EMAILS] },
-        },
-      },
-    });
-
-    await prisma.recurringRule.deleteMany({
-      where: {
-        user: {
-          email: { in: [...TEST_EMAILS] },
-        },
-      },
-    });
-
-    await prisma.category.deleteMany({
-      where: {
-        user: {
-          email: { in: [...TEST_EMAILS] },
-        },
-      },
-    });
-
-    await prisma.refreshToken.deleteMany({
-      where: {
-        user: {
-          email: { in: [...TEST_EMAILS] },
-        },
-      },
-    });
-
-    await prisma.user.deleteMany({
-      where: {
-        email: { in: [...TEST_EMAILS] },
-      },
-    });
+    await cleanupTestDataWithRetry();
   });
 
   afterAll(async () => {

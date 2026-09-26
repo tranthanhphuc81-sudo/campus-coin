@@ -57,6 +57,24 @@ export function conflict(detail: string, errors?: ProblemFieldError[]): AppError
   return new AppError(409, "https://campus-coin.dev/problems/conflict", "Conflict", detail, errors);
 }
 
+export function payloadTooLarge(detail: string): AppError {
+  return new AppError(
+    413,
+    "https://campus-coin.dev/problems/payload-too-large",
+    "Payload Too Large",
+    detail,
+  );
+}
+
+export function unsupportedMediaType(detail: string): AppError {
+  return new AppError(
+    415,
+    "https://campus-coin.dev/problems/unsupported-media-type",
+    "Unsupported Media Type",
+    detail,
+  );
+}
+
 export function validationFailed(errors: ProblemFieldError[]): AppError {
   return new AppError(
     422,
