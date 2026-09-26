@@ -86,6 +86,11 @@ export const authUserSchema = z.object({
   email: emailSchema,
   role: authRoleSchema,
   emailVerifiedAt: z.string().nullable().optional(),
+  aiOptIn: z.boolean(),
+});
+
+export const updateProfileInputSchema = z.object({
+  aiOptIn: z.boolean(),
 });
 
 export const authSessionSchema = z.object({
@@ -218,6 +223,9 @@ export const createTransactionInputSchema = z.object({
     .regex(/^(?:0|[1-9]\d{0,11})(?:\.\d{1,2})?$/),
   description: z.string().trim().max(255).optional(),
   txnDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  categorySource: z.enum(["user", "ai_accepted", "ai_overridden"]).optional(),
+  aiSuggestedCategoryId: z.number().int().positive().nullable().optional(),
+  aiConfidence: z.number().min(0).max(1).nullable().optional(),
 });
 
 export const updateTransactionInputSchema = z
@@ -234,6 +242,9 @@ export const updateTransactionInputSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional(),
+    categorySource: z.enum(["user", "ai_accepted", "ai_overridden"]).optional(),
+    aiSuggestedCategoryId: z.number().int().positive().nullable().optional(),
+    aiConfidence: z.number().min(0).max(1).nullable().optional(),
   })
   .refine((payload) => Object.keys(payload).length > 0, {
     message: "At least one field is required.",
@@ -273,6 +284,18 @@ export const notificationsResponseSchema = z.object({
   unreadCount: z.number().int().min(0),
 });
 
+export const aiSuggestionSchema = z.object({
+  categoryId: z.number().int().positive(),
+  categoryName: z.string().min(1),
+  confidence: z.number().min(0).max(1),
+  source: z.enum(["user_rule", "keyword", "llm"]),
+});
+
+export const aiSuggestionResponseSchema = z.union([
+  aiSuggestionSchema,
+  z.object({ suggestion: z.null() }),
+]);
+
 export type AuthRole = z.infer<typeof authRoleSchema>;
 export type RegisterInput = z.infer<typeof registerInputSchema>;
 export type LoginInput = z.infer<typeof loginInputSchema>;
@@ -281,6 +304,7 @@ export type VerifyEmailInput = z.infer<typeof verifyEmailInputSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordInputSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>;
 export type AuthUser = z.infer<typeof authUserSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileInputSchema>;
 export type AuthSession = z.infer<typeof authSessionSchema>;
 export type CategoryType = z.infer<typeof categoryTypeSchema>;
 export type Category = z.infer<typeof categorySchema>;
@@ -297,3 +321,4 @@ export type CreateTransactionInput = z.infer<typeof createTransactionInputSchema
 export type UpdateTransactionInput = z.infer<typeof updateTransactionInputSchema>;
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 export type Notification = z.infer<typeof notificationSchema>;
+export type AiSuggestion = z.infer<typeof aiSuggestionSchema>;

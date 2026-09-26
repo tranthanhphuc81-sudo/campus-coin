@@ -110,6 +110,7 @@ describe("ProtectedRoute", () => {
         fullName: "Student User",
         email: "student@example.com",
         role: "student",
+        aiOptIn: false,
       },
       role: "student",
       isAuthenticated: true,

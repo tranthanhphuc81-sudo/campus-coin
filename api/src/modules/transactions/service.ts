@@ -208,6 +208,7 @@ export async function addTransaction(
     description: withCategory.description,
     categorySource: payload.categorySource ?? "user",
     aiSuggestedCategoryId: payload.aiSuggestedCategoryId ?? null,
+    aiConfidence: payload.aiConfidence ?? null,
   });
 
   return mapTransactionToDto(withCategory);

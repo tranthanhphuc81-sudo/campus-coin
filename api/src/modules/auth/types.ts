@@ -1,4 +1,8 @@
+import type { User } from "@prisma/client";
+
 export type AuthRole = "student" | "admin";
+
+export type UserWithAiOptIn = User & { aiOptIn: boolean };
 
 export type AuthUser = {
   id: string;
@@ -6,6 +10,7 @@ export type AuthUser = {
   email: string;
   role: AuthRole;
   emailVerifiedAt?: string | null;
+  aiOptIn: boolean;
 };
 
 export type AuthSessionResult = {
@@ -20,6 +25,7 @@ export type PublicAuthUser = {
   email: string;
   role: AuthRole;
   emailVerifiedAt: string | null;
+  aiOptIn: boolean;
 };
 
 export type RequestClientMeta = {

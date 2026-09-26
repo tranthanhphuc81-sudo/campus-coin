@@ -106,7 +106,7 @@ describe("CategorizerService", () => {
   it("scrubs PII before sending to provider", async () => {
     const provider = {
       name: "openai",
-      categorize: vi.fn(async (_input: { cleanedDescription: string }) => {
+      categorize: vi.fn(async () => {
         return { categoryId: "10", confidence: 0.6 };
       }),
       generateInsight: vi.fn(async () => null),

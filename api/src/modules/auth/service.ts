@@ -21,8 +21,14 @@ import {
   findUserByEmail,
   findUserById,
   revokeRefreshTokenSession,
+  updateUserAiOptIn,
 } from "./repository.js";
-import type { AuthSessionResult, PublicAuthUser, RequestClientMeta } from "./types.js";
+import type {
+  AuthSessionResult,
+  PublicAuthUser,
+  RequestClientMeta,
+  UserWithAiOptIn,
+} from "./types.js";
 
 type RegisterInput = z.infer<typeof registerSchema>;
 type LoginInput = z.infer<typeof loginSchema>;
@@ -37,13 +43,14 @@ function roleToWireValue(role: User["role"]): "student" | "admin" {
   return role === "ADMIN" ? "admin" : "student";
 }
 
-function toPublicUser(user: User): PublicAuthUser {
+function toPublicUser(user: UserWithAiOptIn): PublicAuthUser {
   return {
     id: user.id,
     fullName: user.fullName,
     email: user.email,
     role: roleToWireValue(user.role),
     emailVerifiedAt: user.emailVerifiedAt ? user.emailVerifiedAt.toISOString() : null,
+    aiOptIn: user.aiOptIn,
   };
 }
 
@@ -95,7 +102,10 @@ export async function register(
   return "Your account has been created successfully. You can sign in now.";
 }
 
-async function issueSession(user: User, clientMeta: RequestClientMeta): Promise<AuthSessionResult> {
+async function issueSession(
+  user: UserWithAiOptIn,
+  clientMeta: RequestClientMeta,
+): Promise<AuthSessionResult> {
   const sessionId = uuidv7();
   const expiresAt = new Date(Date.now() + config.REFRESH_TOKEN_TTL_SECONDS * 1000);
   const accessToken = await createAccessToken(user);
@@ -210,6 +220,11 @@ export async function getMe(userId: string): Promise<PublicAuthUser> {
     throw unauthenticated();
   }
 
+  return toPublicUser(user);
+}
+
+export async function updateAiOptIn(userId: string, aiOptIn: boolean): Promise<PublicAuthUser> {
+  const user = await updateUserAiOptIn(userId, aiOptIn);
   return toPublicUser(user);
 }
 

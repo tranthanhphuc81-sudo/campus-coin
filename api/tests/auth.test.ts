@@ -95,11 +95,47 @@ describe("Auth endpoints", () => {
     expect(meResponse.body).toMatchObject({
       email: TEST_EMAIL,
       role: "student",
+      aiOptIn: false,
     });
+
+    const updateProfileResponse = await request(app)
+      .patch("/api/v1/me")
+      .set("Authorization", `Bearer ${String(loginResponse.body.accessToken)}`)
+      .send({ aiOptIn: true });
+
+    expect(updateProfileResponse.status).toBe(200);
+    expect(updateProfileResponse.body.aiOptIn).toBe(true);
 
     const refreshResponse = await request(app).post("/api/v1/auth/refresh").set("Cookie", cookies);
 
     expect(refreshResponse.status).toBe(200);
     expect(typeof refreshResponse.body.accessToken).toBe("string");
+  });
+
+  it("rejects an unauthenticated profile preference update", async () => {
+    const app = createApp();
+    const response = await request(app).patch("/api/v1/me").send({ aiOptIn: true });
+
+    expect(response.status).toBe(401);
+  });
+
+  it("rejects profile updates outside the supported schema", async () => {
+    const app = createApp();
+    await request(app).post("/api/v1/auth/register").send({
+      fullName: "Student Test",
+      email: TEST_EMAIL,
+      password: "Password#1234",
+      confirmPassword: "Password#1234",
+    });
+    const loginResponse = await request(app).post("/api/v1/auth/login").send({
+      email: TEST_EMAIL,
+      password: "Password#1234",
+    });
+    const response = await request(app)
+      .patch("/api/v1/me")
+      .set("Authorization", `Bearer ${String(loginResponse.body.accessToken)}`)
+      .send({ role: "admin" });
+
+    expect(response.status).toBe(422);
   });
 });

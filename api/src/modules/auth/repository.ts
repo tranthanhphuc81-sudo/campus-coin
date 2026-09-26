@@ -2,16 +2,22 @@ import type { Prisma, User } from "@prisma/client";
 
 import { prisma } from "../../lib/prisma.js";
 
-export async function findUserByEmail(email: string): Promise<User | null> {
+import type { UserWithAiOptIn } from "./types.js";
+
+export async function findUserByEmail(email: string): Promise<UserWithAiOptIn | null> {
   return prisma.user.findUnique({ where: { email } });
 }
 
-export async function findUserById(id: string): Promise<User | null> {
+export async function findUserById(id: string): Promise<UserWithAiOptIn | null> {
   return prisma.user.findUnique({ where: { id } });
 }
 
 export async function createUser(data: Prisma.UserCreateInput): Promise<User> {
   return prisma.user.create({ data });
+}
+
+export async function updateUserAiOptIn(id: string, aiOptIn: boolean): Promise<User> {
+  return prisma.user.update({ where: { id }, data: { aiOptIn } });
 }
 
 export async function createRefreshTokenSession(data: {

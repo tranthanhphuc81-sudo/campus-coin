@@ -73,3 +73,7 @@ export const resetPasswordSchema = z
       });
     }
   });
+
+export const updateProfileSchema = z.object({
+  aiOptIn: z.boolean(),
+});

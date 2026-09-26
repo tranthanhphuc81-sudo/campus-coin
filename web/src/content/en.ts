@@ -22,6 +22,7 @@ export const en = {
     transactions: "/transactions",
     budgets: "/budgets",
     reports: "/reports",
+    profile: "/profile",
     adminHome: "/admin",
   },
   layout: {
@@ -39,7 +40,7 @@ export const en = {
       transactions: "Transactions",
       budgets: "Budgets",
       reports: "Reports",
-      settings: "Settings",
+      settings: "Profile",
     },
   },
   notFound: {
@@ -206,10 +207,20 @@ export const en = {
     },
     form: {
       categoryLabel: "Category",
+      aiSuggestionLabel: "AI suggestion",
+      aiQuickPickLabel: "Suggested category",
+      aiSources: {
+        user_rule: "Your rule",
+        keyword: "Keyword",
+        llm: "AI",
+      },
       amountLabel: "Amount",
       dateLabel: "Date",
       descriptionLabel: "Description",
       descriptionPlaceholder: "Optional note",
+    },
+    suggestion: {
+      quickPickAriaLabel: "Choose suggested category {category}",
     },
     sourceLabels: {
       manual: "Manual",
@@ -226,6 +237,16 @@ export const en = {
       saveFailed: "Unable to save transaction.",
       deleteFailed: "Unable to delete transaction.",
     },
+  },
+  profile: {
+    title: "Profile and privacy",
+    subtitle: "Choose whether AI can help categorize your transactions.",
+    aiSuggestionsLabel: "Enable AI suggestions",
+    aiSuggestionsDescription:
+      "When enabled, a cleaned transaction description and the available category names may be sent to our AI provider to suggest a category. Your name, email, and transaction amount are not sent to the provider.",
+    savedMessage: "AI suggestion preference saved.",
+    loadFailed: "Unable to load your profile.",
+    saveFailed: "Unable to save your AI preference.",
   },
   dashboard: {
     title: "Dashboard",

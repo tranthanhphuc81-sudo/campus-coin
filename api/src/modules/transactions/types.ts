@@ -30,6 +30,7 @@ export type CreateTransactionInput = {
   txnDate: string;
   categorySource?: "user" | "ai_accepted" | "ai_overridden";
   aiSuggestedCategoryId?: number | null;
+  aiConfidence?: number | null;
 };
 
 export type UpdateTransactionInput = {
@@ -40,4 +41,5 @@ export type UpdateTransactionInput = {
   txnDate?: string;
   categorySource?: "user" | "ai_accepted" | "ai_overridden";
   aiSuggestedCategoryId?: number | null;
+  aiConfidence?: number | null;
 };

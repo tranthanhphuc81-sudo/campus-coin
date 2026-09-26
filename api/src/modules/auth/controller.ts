@@ -11,6 +11,7 @@ import {
   refresh,
   register,
   resetPassword,
+  updateAiOptIn,
   verifyEmail,
 } from "./service.js";
 
@@ -70,6 +71,16 @@ export async function meHandler(req: Request, res: Response): Promise<void> {
   }
 
   const me = await getMe(userId);
+  res.status(200).json(me);
+}
+
+export async function patchMeHandler(req: Request, res: Response): Promise<void> {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw unauthenticated();
+  }
+
+  const me = await updateAiOptIn(userId, req.body.aiOptIn as boolean);
   res.status(200).json(me);
 }
 

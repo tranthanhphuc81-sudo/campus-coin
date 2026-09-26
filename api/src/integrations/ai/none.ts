@@ -1,13 +1,13 @@
-import type { AiProvider, CategorizeInput, InsightInput } from "./provider.js";
+import type { AiProvider } from "./provider.js";
 
 export class NoneProvider implements AiProvider {
   readonly name = "none" as const;
 
-  async categorize(_input: CategorizeInput, _signal: AbortSignal) {
+  async categorize() {
     return null;
   }
 
-  async generateInsight(_input: InsightInput, _signal: AbortSignal) {
+  async generateInsight() {
     return null;
   }
 }

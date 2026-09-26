@@ -5,7 +5,6 @@ import {
   parseCategorizeOutput,
   type AiProvider,
   type CategorizeInput,
-  type InsightInput,
 } from "./provider.js";
 
 type GeminiContentPart = {
@@ -74,7 +73,7 @@ export class GeminiProvider implements AiProvider {
     return parseCategorizeOutput(rawText, allowedSet);
   }
 
-  async generateInsight(_input: InsightInput, _signal: AbortSignal) {
+  async generateInsight() {
     return null;
   }
 }

@@ -1,13 +1,15 @@
 import {
+  aiSuggestionResponseSchema,
   createTransactionInputSchema,
   updateTransactionInputSchema,
+  type AiSuggestion,
   type CategoryType,
   type Transaction,
   type TransactionType,
 } from "@campus-coin/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { useSearchParams } from "react-router-dom";
 
 import { en } from "@/content/en";
@@ -21,6 +23,8 @@ import {
 import LoadingButton from "@/components/common/LoadingButton";
 import { formatMoney } from "@/lib/money";
 import { parseProblem } from "@/lib/problem";
+import api from "@/lib/api";
+import { useProfile } from "@/features/profile/hooks";
 
 type TransactionFormValues = {
   categoryId: number;
@@ -62,7 +66,14 @@ export default function TransactionsPage() {
   const [month, setMonth] = useState(() => toMonthInput(new Date()));
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
+  const [aiSuggestionState, setAiSuggestionState] = useState<{
+    description: string;
+    type: TransactionType;
+    suggestion: AiSuggestion;
+  } | null>(null);
   const autoOpenCreateHandled = useRef(false);
+  const [manualCategorySelection, setManualCategorySelection] = useState(false);
+  const profileQuery = useProfile();
 
   const expenseCategoriesQuery = useCategories("expense" as CategoryType);
   const incomeCategoriesQuery = useCategories("income" as CategoryType);
@@ -102,8 +113,90 @@ export default function TransactionsPage() {
       description: "",
     },
   });
+  const { getValues, setValue } = form;
 
   const isEditing = Boolean(editingTransaction?.id);
+  const descriptionValue = useWatch({ control: form.control, name: "description" }) ?? "";
+  const selectedCategoryId = useWatch({ control: form.control, name: "categoryId" });
+  const normalizedDescription = descriptionValue.trim();
+  const aiSuggestion =
+    !isEditing &&
+    profileQuery.data?.aiOptIn === true &&
+    aiSuggestionState?.description === normalizedDescription &&
+    aiSuggestionState.type === activeType
+      ? aiSuggestionState.suggestion
+      : null;
+
+  useEffect(() => {
+    const description = normalizedDescription;
+    if (
+      !editingTransaction ||
+      isEditing ||
+      profileQuery.data?.aiOptIn !== true ||
+      description.length < 3
+    ) {
+      return;
+    }
+
+    let controller: AbortController | null = null;
+    const timeoutId = window.setTimeout(() => {
+      controller = new AbortController();
+      const enteredAmount = createTransactionInputSchema.shape.amount.safeParse(
+        getValues("amount"),
+      );
+      void api
+        .post(
+          "/ai/categorize/suggest",
+          {
+            description,
+            amount: enteredAmount.success ? enteredAmount.data : "0.00",
+            type: activeType,
+          },
+          { signal: controller.signal },
+        )
+        .then((response) => {
+          if (controller?.signal.aborted) {
+            return;
+          }
+
+          const parsed = aiSuggestionResponseSchema.safeParse(response.data);
+          const suggestion = parsed.success && "categoryId" in parsed.data ? parsed.data : null;
+          if (
+            !suggestion ||
+            !categories.some((category) => category.id === suggestion.categoryId)
+          ) {
+            setAiSuggestionState(null);
+            return;
+          }
+
+          setAiSuggestionState({ description, type: activeType, suggestion });
+          if (suggestion.confidence >= 0.6 && !manualCategorySelection) {
+            setValue("categoryId", suggestion.categoryId, {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+          }
+        })
+        .catch(() => {
+          // Suggestions are optional; failures must not affect transaction entry.
+        });
+    }, 400);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller?.abort();
+    };
+  }, [
+    activeType,
+    categories,
+    editingTransaction,
+    getValues,
+    isEditing,
+    manualCategorySelection,
+    normalizedDescription,
+    profileQuery.data?.aiOptIn,
+    setValue,
+  ]);
 
   const canOpenCreate = useMemo(() => categories.length > 0, [categories.length]);
 
@@ -113,6 +206,8 @@ export default function TransactionsPage() {
       return;
     }
 
+    setManualCategorySelection(false);
+    setAiSuggestionState(null);
     setEditingTransaction({
       id: "",
       categoryId: firstCategory.id,
@@ -188,6 +283,8 @@ export default function TransactionsPage() {
   };
 
   const openEditDialog = (transaction: Transaction) => {
+    setManualCategorySelection(false);
+    setAiSuggestionState(null);
     setEditingTransaction(transaction);
     form.reset({
       categoryId: transaction.categoryId,
@@ -198,6 +295,8 @@ export default function TransactionsPage() {
   };
 
   const closeDialog = () => {
+    setManualCategorySelection(false);
+    setAiSuggestionState(null);
     setEditingTransaction(null);
     form.clearErrors();
   };
@@ -234,6 +333,13 @@ export default function TransactionsPage() {
           amount: values.amount,
           description: normalizedDescription,
           txnDate: values.txnDate,
+          categorySource: aiSuggestion
+            ? values.categoryId === aiSuggestion.categoryId
+              ? "ai_accepted"
+              : "ai_overridden"
+            : "user",
+          aiSuggestedCategoryId: aiSuggestion?.categoryId ?? null,
+          aiConfidence: aiSuggestion?.confidence ?? null,
         });
 
         await createMutation.mutateAsync(payload);
@@ -246,6 +352,10 @@ export default function TransactionsPage() {
       setFlashMessage(problem.detail || en.transactions.messages.saveFailed);
     }
   });
+
+  const aiSuggestionSourceLabel = aiSuggestion
+    ? en.transactions.form.aiSources[aiSuggestion.source]
+    : "";
 
   return (
     <section className="transactions-page" aria-labelledby="transactions-page-title">
@@ -266,11 +376,7 @@ export default function TransactionsPage() {
             }}
           />
 
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleAddClick}
-          >
+          <button type="button" className="btn btn-primary" onClick={handleAddClick}>
             {en.transactions.addAction}
           </button>
         </div>
@@ -382,7 +488,12 @@ export default function TransactionsPage() {
                 <select
                   id="transaction-category"
                   className="field-select"
-                  {...form.register("categoryId", { valueAsNumber: true })}
+                  {...form.register("categoryId", {
+                    valueAsNumber: true,
+                    onChange: () => {
+                      setManualCategorySelection(true);
+                    },
+                  })}
                 >
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
@@ -394,6 +505,35 @@ export default function TransactionsPage() {
                   <p className="form-error" role="alert">
                     {form.formState.errors.categoryId.message}
                   </p>
+                ) : null}
+                {aiSuggestion &&
+                (aiSuggestion.confidence >= 0.6 ||
+                  selectedCategoryId === aiSuggestion.categoryId) ? (
+                  <span className="badge text-bg-info" title={aiSuggestionSourceLabel}>
+                    {en.transactions.form.aiSuggestionLabel}
+                  </span>
+                ) : null}
+                {aiSuggestion &&
+                aiSuggestion.confidence < 0.6 &&
+                selectedCategoryId !== aiSuggestion.categoryId ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    title={aiSuggestionSourceLabel}
+                    aria-label={en.transactions.suggestion.quickPickAriaLabel.replace(
+                      "{category}",
+                      aiSuggestion.categoryName,
+                    )}
+                    onClick={() => {
+                      setValue("categoryId", aiSuggestion.categoryId, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }}
+                  >
+                    {en.transactions.form.aiQuickPickLabel}: {aiSuggestion.categoryName} (
+                    {Math.round(aiSuggestion.confidence * 100)}%)
+                  </button>
                 ) : null}
               </div>
 

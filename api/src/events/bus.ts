@@ -11,6 +11,7 @@ export type TransactionCreatedEvent = {
   description?: string | null;
   categorySource?: "user" | "ai_accepted" | "ai_overridden";
   aiSuggestedCategoryId?: number | null;
+  aiConfidence?: number | null;
 };
 
 type TransactionSnapshotEvent = {

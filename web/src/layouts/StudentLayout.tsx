@@ -47,7 +47,9 @@ export default function StudentLayout() {
               <li>
                 <Link to={en.routes.reports}>{en.layout.studentNav.reports}</Link>
               </li>
-              <li>{en.layout.studentNav.settings}</li>
+              <li>
+                <Link to={en.routes.profile}>{en.layout.studentNav.settings}</Link>
+              </li>
             </ul>
           </nav>
         </aside>
@@ -74,9 +76,9 @@ export default function StudentLayout() {
         <Link to={en.routes.reports} className="bottom-nav__item">
           {en.layout.studentNav.reports}
         </Link>
-        <button type="button" className="bottom-nav__item">
+        <Link to={en.routes.profile} className="bottom-nav__item">
           {en.layout.studentNav.settings}
-        </button>
+        </Link>
       </nav>
 
       <button

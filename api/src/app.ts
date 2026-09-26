@@ -13,7 +13,8 @@ import { AppError, notFound, rateLimited } from "./lib/problem.js";
 import { prisma } from "./lib/prisma.js";
 import { registerBudgetAlertHandler } from "./events/handlers/budgetAlert.js";
 import { registerAiLearningHandler } from "./events/handlers/aiLearning.js";
-import { meHandler } from "./modules/auth/controller.js";
+import { meHandler, patchMeHandler } from "./modules/auth/controller.js";
+import { updateProfileSchema } from "./modules/auth/schema.js";
 import { adminAuthRouter, authRouter } from "./modules/auth/routes.js";
 import { budgetsRouter } from "./modules/budgets/routes.js";
 import { categoriesRouter } from "./modules/categories/routes.js";
@@ -22,6 +23,7 @@ import { recurringRulesRouter } from "./modules/recurring-rules/routes.js";
 import { dashboardRouter, reportsRouter } from "./modules/analytics/routes.js";
 import { transactionsRouter } from "./modules/transactions/routes.js";
 import { aiRouter } from "./modules/ai/routes.js";
+import { validate } from "./middlewares/validate.js";
 
 export function createApp() {
   registerBudgetAlertHandler();
@@ -91,6 +93,7 @@ export function createApp() {
   apiRouter.use("/reports", reportsRouter);
   apiRouter.use("/ai", aiRouter);
   apiRouter.get("/me", requireAuth, meHandler);
+  apiRouter.patch("/me", requireAuth, validate({ body: updateProfileSchema }), patchMeHandler);
 
   app.get("/health", (_req, res) => {
     res.status(200).json({ status: "ok" });

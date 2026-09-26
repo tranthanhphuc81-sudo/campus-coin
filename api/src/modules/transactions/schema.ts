@@ -24,6 +24,7 @@ export const createTransactionBodySchema = z.object({
   txnDate: z.string().regex(dateRegex, "txnDate must use YYYY-MM-DD format."),
   categorySource: z.enum(["user", "ai_accepted", "ai_overridden"]).optional(),
   aiSuggestedCategoryId: z.number().int().positive().nullable().optional(),
+  aiConfidence: z.number().min(0).max(1).nullable().optional(),
 });
 
 export const updateTransactionBodySchema = z
@@ -39,6 +40,7 @@ export const updateTransactionBodySchema = z
     txnDate: z.string().regex(dateRegex, "txnDate must use YYYY-MM-DD format.").optional(),
     categorySource: z.enum(["user", "ai_accepted", "ai_overridden"]).optional(),
     aiSuggestedCategoryId: z.number().int().positive().nullable().optional(),
+    aiConfidence: z.number().min(0).max(1).nullable().optional(),
   })
   .refine((payload) => Object.keys(payload).length > 0, {
     message: "At least one field is required.",

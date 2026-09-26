@@ -70,6 +70,7 @@ model User {
     email           String               @unique @db.VarChar(254)
     passwordHash    String               @map("password_hash") @db.VarChar(255)
     role            UserRole             @default(STUDENT)
+    aiOptIn         Boolean              @default(false) @map("ai_opt_in")
     emailVerifiedAt DateTime?            @map("email_verified_at")
     deletedAt       DateTime?            @map("deleted_at")
     createdAt       DateTime             @default(now()) @map("created_at")
@@ -84,6 +85,8 @@ model User {
     importBatches   ImportBatch[]
     idempotencyKeys IdempotencyKey[]
     historyEntries  TransactionHistory[]
+    aiCategoryRules AiCategoryRule[]
+    aiUsageDaily    AiUsageDaily[]
 
     @@map("users")
 }
@@ -118,21 +121,22 @@ model AuthToken {
 }
 
 model Category {
-    id             Int             @id @default(autoincrement())
-    userId         String?         @map("user_id") @db.Char(36)
-    name           String          @db.VarChar(50)
-    type           CategoryType
-    icon           String?         @db.VarChar(40)
-    color          String?         @db.Char(7)
-    isDefault      Boolean         @default(false) @map("is_default")
-    isActive       Boolean         @default(true) @map("is_active")
-    sortOrder      Int             @default(0) @map("sort_order")
-    createdAt      DateTime        @default(now()) @map("created_at")
-    updatedAt      DateTime        @updatedAt @map("updated_at")
-    user           User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
-    transactions   Transaction[]
-    recurringRules RecurringRule[]
-    budgets        Budget[]
+    id              Int              @id @default(autoincrement())
+    userId          String?          @map("user_id") @db.Char(36)
+    name            String           @db.VarChar(50)
+    type            CategoryType
+    icon            String?          @db.VarChar(40)
+    color           String?          @db.Char(7)
+    isDefault       Boolean          @default(false) @map("is_default")
+    isActive        Boolean          @default(true) @map("is_active")
+    sortOrder       Int              @default(0) @map("sort_order")
+    createdAt       DateTime         @default(now()) @map("created_at")
+    updatedAt       DateTime         @updatedAt @map("updated_at")
+    user            User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+    transactions    Transaction[]
+    recurringRules  RecurringRule[]
+    budgets         Budget[]
+    aiCategoryRules AiCategoryRule[]
 
     @@unique([userId, type, name], map: "uq_categories_user_type_name")
     @@index([userId, type, isActive], map: "idx_categories_user_type_active")
@@ -269,4 +273,29 @@ model TransactionHistory {
 
     @@index([transactionId, changedAt], map: "idx_transaction_history_transaction_changed_at")
     @@map("transaction_history")
+}
+
+model AiCategoryRule {
+    id                   BigInt   @id @default(autoincrement())
+    userId               String   @map("user_id") @db.Char(36)
+    merchantKey          String   @map("merchant_key") @db.VarChar(100)
+    categoryId           Int      @map("category_id")
+    hitCount             Int      @default(1) @map("hit_count") @db.UnsignedInt
+    consecutiveOverrides Int      @default(0) @map("consecutive_overrides") @db.UnsignedSmallInt
+    lastUsedAt           DateTime @default(now()) @map("last_used_at")
+    user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    category             Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+    @@unique([userId, merchantKey], map: "uq_ai_category_rules_user_merchant")
+    @@map("ai_category_rules")
+}
+
+model AiUsageDaily {
+    userId    String   @map("user_id") @db.Char(36)
+    usageDate DateTime @map("usage_date") @db.Date
+    callCount Int      @default(0) @map("call_count") @db.UnsignedInt
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@id([userId, usageDate])
+    @@map("ai_usage_daily")
 }
