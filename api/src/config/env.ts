@@ -56,6 +56,25 @@ function readBooleanWithDefault(key: string, fallback: boolean): boolean {
   throw new Error(`Invalid boolean environment variable: ${key}`);
 }
 
+function readOptional(key: string): string | undefined {
+  const value = process.env[key];
+  return value && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function readOptionalPort(key: string): number | undefined {
+  const value = readOptional(key);
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`Invalid numeric environment variable: ${key}`);
+  }
+
+  return Math.trunc(parsed);
+}
+
 function readJwtSecret(): string {
   const fromEnv = process.env.JWT_SECRET;
   if (fromEnv && fromEnv.trim().length >= 16) {
@@ -79,4 +98,9 @@ export const config = {
   ENABLE_CRON: readBooleanWithDefault("ENABLE_CRON", false),
   ACCESS_TOKEN_TTL_SECONDS: readIntWithDefault("ACCESS_TOKEN_TTL", 900),
   REFRESH_TOKEN_TTL_SECONDS: readIntWithDefault("REFRESH_TOKEN_TTL", 60 * 60 * 24 * 30),
+  SMTP_HOST: readOptional("SMTP_HOST"),
+  SMTP_PORT: readOptionalPort("SMTP_PORT"),
+  SMTP_USER: readOptional("SMTP_USER"),
+  SMTP_PASS: readOptional("SMTP_PASS"),
+  MAIL_FROM: readOptional("MAIL_FROM") ?? "Campus Coin <no-reply@campus-coin.dev>",
 } as const;

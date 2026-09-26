@@ -18,6 +18,7 @@ import { budgetsRouter } from "./modules/budgets/routes.js";
 import { categoriesRouter } from "./modules/categories/routes.js";
 import { notificationsRouter } from "./modules/notifications/routes.js";
 import { recurringRulesRouter } from "./modules/recurring-rules/routes.js";
+import { dashboardRouter, reportsRouter } from "./modules/analytics/routes.js";
 import { transactionsRouter } from "./modules/transactions/routes.js";
 
 export function createApp() {
@@ -83,6 +84,8 @@ export function createApp() {
   apiRouter.use("/recurring-rules", recurringRulesRouter);
   apiRouter.use("/budgets", budgetsRouter);
   apiRouter.use("/notifications", notificationsRouter);
+  apiRouter.use("/dashboard", dashboardRouter);
+  apiRouter.use("/reports", reportsRouter);
   apiRouter.get("/me", requireAuth, meHandler);
 
   app.get("/health", (_req, res) => {

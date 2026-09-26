@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import api from "@/lib/api";
@@ -217,5 +217,23 @@ export function useDailyWeeklyReport(month: string, enabled = true) {
       return wrappedDailyWeeklySchema.parse(response.data).data;
     },
     enabled,
+  });
+}
+
+export async function exportMonthlyReportPdf(month: string): Promise<Blob> {
+  const response = await api.get("/reports/monthly/export", {
+    params: { month, format: "pdf" },
+    responseType: "blob",
+  });
+
+  return response.data as Blob;
+}
+
+export function useShareMonthlyReport() {
+  return useMutation({
+    mutationFn: async (input: { month: string; toEmail: string }) => {
+      const response = await api.post("/reports/monthly/share", input);
+      return response.data as { data: { sent: boolean } };
+    },
   });
 }

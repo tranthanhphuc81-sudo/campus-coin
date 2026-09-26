@@ -1,16 +1,20 @@
 import { toPng } from "html-to-image";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { DoughnutChart, GroupedBarChart, LineChart } from "@/components/charts";
+import LoadingButton from "@/components/common/LoadingButton";
 import { en } from "@/content/en";
 import {
+  exportMonthlyReportPdf,
   useCategoryBreakdownReport,
   useDailyWeeklyReport,
   useIncomeVsExpenseReport,
+  useShareMonthlyReport,
 } from "@/features/analytics/hooks";
 import { useCategories } from "@/features/categories/hooks";
 import { formatMoney } from "@/lib/money";
+import { parseProblem } from "@/lib/problem";
 
 type ReportTab = "category" | "income-expense" | "daily-weekly" | "forecast";
 type DateRangePreset = "this-month" | "last-month" | "last-3-months" | "last-6-months";
@@ -99,7 +103,14 @@ export default function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfExportError, setPdfExportError] = useState<string | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareEmail, setShareEmail] = useState("");
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [shareSuccess, setShareSuccess] = useState<string | null>(null);
   const reportAreaRef = useRef<HTMLDivElement | null>(null);
+  const shareMonthlyReportMutation = useShareMonthlyReport();
 
   const tab = sanitizeTab(searchParams.get("tab"));
   const preset = sanitizePreset(searchParams.get("range"));
@@ -172,6 +183,46 @@ export default function ReportsPage() {
     }
   };
 
+  const exportPdf = async () => {
+    setPdfExportError(null);
+    setIsExportingPdf(true);
+
+    try {
+      const blob = await exportMonthlyReportPdf(month);
+      const url = URL.createObjectURL(blob);
+      downloadDataUrl(url, `campus-coin-report-${month}.pdf`);
+      URL.revokeObjectURL(url);
+    } catch {
+      setPdfExportError(en.reports.messages.exportPdfFailed);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const openShareModal = () => {
+    setShareEmail("");
+    setShareError(null);
+    setShareSuccess(null);
+    setIsShareModalOpen(true);
+  };
+
+  const closeShareModal = () => {
+    setIsShareModalOpen(false);
+  };
+
+  const submitShareReport = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setShareError(null);
+
+    try {
+      await shareMonthlyReportMutation.mutateAsync({ month, toEmail: shareEmail });
+      setShareSuccess(en.reports.messages.shareSuccess);
+    } catch (error) {
+      const problem = parseProblem(error);
+      setShareError(problem.detail || en.reports.messages.shareFailed);
+    }
+  };
+
   return (
     <section className="reports-page" aria-labelledby="reports-page-title">
       <header className="reports-page__header">
@@ -190,7 +241,78 @@ export default function ReportsPage() {
         >
           {isExporting ? en.common.loadingLabel : en.reports.exportPngAction}
         </button>
+
+        <button
+          type="button"
+          className="btn btn-outline"
+          onClick={() => {
+            void exportPdf();
+          }}
+          disabled={isExportingPdf}
+        >
+          {isExportingPdf ? en.common.loadingLabel : en.reports.exportPdfAction}
+        </button>
+
+        <button type="button" className="btn btn-outline" onClick={openShareModal}>
+          {en.reports.shareEmailAction}
+        </button>
       </header>
+
+      {pdfExportError ? <p className="flash-error">{pdfExportError}</p> : null}
+
+      {isShareModalOpen ? (
+        <div className="dialog-backdrop" role="presentation">
+          <div
+            className="dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="share-report-dialog-title"
+          >
+            <h2 id="share-report-dialog-title">{en.reports.shareModal.title}</h2>
+            <p>{en.reports.shareModal.description}</p>
+
+            <form
+              className="form-stack"
+              onSubmit={(event) => {
+                void submitShareReport(event);
+              }}
+              noValidate
+            >
+              <div className="form-field">
+                <label htmlFor="share-report-email">{en.reports.shareModal.emailLabel}</label>
+                <input
+                  id="share-report-email"
+                  type="email"
+                  required
+                  value={shareEmail}
+                  onChange={(event) => setShareEmail(event.target.value)}
+                />
+              </div>
+
+              {shareError ? (
+                <p className="form-error" role="alert">
+                  {shareError}
+                </p>
+              ) : null}
+
+              {shareSuccess ? <p role="status">{shareSuccess}</p> : null}
+
+              <div className="dialog-actions">
+                <button type="button" className="btn btn-outline" onClick={closeShareModal}>
+                  {en.reports.shareModal.cancelAction}
+                </button>
+                <LoadingButton
+                  type="submit"
+                  isLoading={shareMonthlyReportMutation.isPending}
+                  loadingLabel={en.common.loadingLabel}
+                >
+                  {en.reports.shareModal.submitAction}
+                </LoadingButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
 
       <div className="reports-filters panel">
         <div className="form-field">

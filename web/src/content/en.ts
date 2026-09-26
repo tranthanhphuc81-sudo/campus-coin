@@ -261,6 +261,8 @@ export const en = {
     title: "Reports",
     subtitle: "Explore your spending patterns across category, month, and week.",
     exportPngAction: "Export PNG",
+    exportPdfAction: "Export PDF",
+    shareEmailAction: "Share via email",
     summaryTitle: "Summary",
     totalAmountLabel: "Total amount",
     totalTransactionsLabel: "Total transactions",
@@ -299,6 +301,16 @@ export const en = {
     },
     messages: {
       exportPngFailed: "Could not export image. Please try again.",
+      exportPdfFailed: "Could not export PDF. Please try again.",
+      shareSuccess: "Report emailed successfully.",
+      shareFailed: "Could not send the report. Please try again.",
+    },
+    shareModal: {
+      title: "Share via email",
+      description: "We'll send this month's report as a PDF attachment to the address below.",
+      emailLabel: "Recipient email address",
+      cancelAction: "Cancel",
+      submitAction: "Send report",
     },
     a11y: {
       categoryTableCaption: "Category report table",
