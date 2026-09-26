@@ -5,11 +5,13 @@ import {
   addTransaction,
   listTransactions,
   patchTransaction,
+  resolveTransactionFlag,
   removeTransaction,
 } from "./service.js";
 import type {
   CreateTransactionInput,
   ListTransactionsQueryInput,
+  ResolveTransactionFlagInput,
   UpdateTransactionInput,
 } from "./types.js";
 
@@ -51,5 +53,14 @@ export async function deleteTransactionHandler(req: Request, res: Response): Pro
   const { id } = req.params as { id: string };
 
   const result = await removeTransaction(userId, id);
+  res.status(200).json(result);
+}
+
+export async function resolveTransactionFlagHandler(req: Request, res: Response): Promise<void> {
+  const userId = requireUserId(req);
+  const { id } = req.params as { id: string };
+  const payload = req.body as ResolveTransactionFlagInput;
+
+  const result = await resolveTransactionFlag(userId, id, payload);
   res.status(200).json(result);
 }

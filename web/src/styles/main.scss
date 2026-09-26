@@ -579,6 +579,22 @@ input,
   gap: 0.375rem;
 }
 
+.dashboard-recent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.625rem;
+}
+
+.dashboard-recent-list li {
+  border: 1px solid var(--cc-border);
+  border-radius: 0.625rem;
+  padding: 0.625rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
 .dashboard-tip-actions {
   display: flex;
   flex-wrap: wrap;

@@ -10,6 +10,8 @@ export type TransactionDto = {
   amount: string;
   description: string | null;
   source: TransactionWireSource;
+  isAnomaly: boolean;
+  isPossibleDuplicate: boolean;
   txnDate: string;
   createdAt: string;
   updatedAt: string;
@@ -42,4 +44,9 @@ export type UpdateTransactionInput = {
   categorySource?: "user" | "ai_accepted" | "ai_overridden";
   aiSuggestedCategoryId?: number | null;
   aiConfidence?: number | null;
+};
+
+export type ResolveTransactionFlagInput = {
+  flag: "anomaly" | "duplicate";
+  action: "keep" | "delete";
 };

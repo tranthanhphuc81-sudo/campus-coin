@@ -57,6 +57,14 @@ describe("Analytics endpoints", () => {
       },
     });
 
+    await prisma.recurringRule.deleteMany({
+      where: {
+        user: {
+          email: { in: [...TEST_EMAILS] },
+        },
+      },
+    });
+
     await prisma.category.deleteMany({
       where: {
         user: {
@@ -238,6 +246,16 @@ describe("Analytics endpoints", () => {
     expect(response.body.type).toBe("https://campus-coin.dev/problems/unauthenticated");
   });
 
+  it("returns 401 for forecast and recent activity when no token is provided", async () => {
+    const [forecastResponse, activityResponse] = await Promise.all([
+      request(APP).get("/api/v1/forecast/next-month"),
+      request(APP).get("/api/v1/activity/recent"),
+    ]);
+
+    expect(forecastResponse.status).toBe(401);
+    expect(activityResponse.status).toBe(401);
+  });
+
   it("returns 404 behavior for user isolation on reports", async () => {
     const owner = await registerAndLogin("analytics.owner@campus-coin.local", "Analytics Owner");
     const other = await registerAndLogin("analytics.other@campus-coin.local", "Analytics Other");
@@ -270,5 +288,120 @@ describe("Analytics endpoints", () => {
     expect(response.status).toBe(200);
     expect(response.body.data.totalAmount).toBe("0.00");
     expect(response.body.data.items).toHaveLength(0);
+  });
+
+  it("returns next-month forecast with weighted baseline and recurring contribution", async () => {
+    const session = await registerAndLogin("analytics.owner@campus-coin.local", "Analytics Owner");
+
+    const food = await prisma.category.create({
+      data: {
+        userId: session.userId,
+        name: "Food",
+        type: "EXPENSE",
+        isDefault: false,
+        isActive: true,
+      },
+    });
+
+    await prisma.transaction.createMany({
+      data: [
+        {
+          id: crypto.randomUUID(),
+          userId: session.userId,
+          categoryId: food.id,
+          type: "EXPENSE",
+          amount: "100.00",
+          txnDate: new Date("2026-07-12T00:00:00.000Z"),
+        },
+        {
+          id: crypto.randomUUID(),
+          userId: session.userId,
+          categoryId: food.id,
+          type: "EXPENSE",
+          amount: "80.00",
+          txnDate: new Date("2026-08-12T00:00:00.000Z"),
+        },
+        {
+          id: crypto.randomUUID(),
+          userId: session.userId,
+          categoryId: food.id,
+          type: "EXPENSE",
+          amount: "60.00",
+          txnDate: new Date("2026-09-12T00:00:00.000Z"),
+        },
+      ],
+    });
+
+    await prisma.recurringRule.create({
+      data: {
+        userId: session.userId,
+        categoryId: food.id,
+        type: "EXPENSE",
+        amount: "10.00",
+        frequency: "MONTHLY",
+        intervalCount: 1,
+        startDate: new Date("2026-01-01T00:00:00.000Z"),
+        nextRunDate: new Date("2026-10-01T00:00:00.000Z"),
+        isActive: true,
+      },
+    });
+
+    const response = await request(APP)
+      .get("/api/v1/forecast/next-month")
+      .set("Authorization", `Bearer ${session.accessToken}`);
+
+    expect(response.status).toBe(200);
+    const foodForecast = response.body.data.items.find(
+      (item: { categoryId: number }) => item.categoryId === food.id,
+    );
+    expect(foodForecast).toBeDefined();
+    expect(foodForecast.predictedAmount).toBe("84.00");
+    expect(Number(foodForecast.upperBound)).toBeGreaterThanOrEqual(Number(foodForecast.lowerBound));
+  });
+
+  it("returns recent edited activity from server-side history", async () => {
+    const session = await registerAndLogin("analytics.owner@campus-coin.local", "Analytics Owner");
+
+    const transport = await prisma.category.create({
+      data: {
+        userId: session.userId,
+        name: "Transport",
+        type: "EXPENSE",
+        isDefault: false,
+        isActive: true,
+      },
+    });
+
+    const created = await request(APP)
+      .post("/api/v1/transactions")
+      .set("Authorization", `Bearer ${session.accessToken}`)
+      .send({
+        categoryId: transport.id,
+        type: "expense",
+        amount: "15.00",
+        txnDate: "2026-09-14",
+        description: "Morning bus",
+      });
+
+    expect(created.status).toBe(201);
+
+    const patched = await request(APP)
+      .patch(`/api/v1/transactions/${created.body.id}`)
+      .set("Authorization", `Bearer ${session.accessToken}`)
+      .send({ amount: "18.00" });
+
+    expect(patched.status).toBe(200);
+
+    const response = await request(APP)
+      .get("/api/v1/activity/recent")
+      .set("Authorization", `Bearer ${session.accessToken}`);
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body.data.items)).toBe(true);
+    expect(response.body.data.items[0]).toMatchObject({
+      transactionId: created.body.id,
+      activityType: "edited",
+      categoryName: "Transport",
+    });
   });
 });

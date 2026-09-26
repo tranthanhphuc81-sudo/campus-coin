@@ -49,3 +49,8 @@ export const updateTransactionBodySchema = z
 export const transactionIdParamsSchema = z.object({
   id: z.string().uuid(),
 });
+
+export const resolveFlagBodySchema = z.object({
+  flag: z.enum(["anomaly", "duplicate"]),
+  action: z.enum(["keep", "delete"]),
+});

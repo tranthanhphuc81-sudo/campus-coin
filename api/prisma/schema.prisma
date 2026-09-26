@@ -57,6 +57,11 @@ enum NotificationType {
     SYSTEM
 }
 
+enum RecentActivityType {
+    VIEWED
+    EDITED
+}
+
 enum InsightStatus {
     QUEUED
     PROCESSING
@@ -102,6 +107,7 @@ model User {
     authTokens          AuthToken[]
     categories          Category[]
     transactions        Transaction[]
+    recentActivities    RecentActivity[]
     recurringRules      RecurringRule[]
     budgets             Budget[]
     notifications       Notification[]
@@ -172,25 +178,28 @@ model Category {
 }
 
 model Transaction {
-    id              String               @id @db.Char(36)
-    userId          String               @map("user_id") @db.Char(36)
-    categoryId      Int                  @map("category_id")
-    type            TransactionType
-    amount          Decimal              @db.Decimal(14, 2)
-    description     String?              @db.VarChar(255)
-    source          TransactionSource    @default(MANUAL)
-    recurringRuleId Int?                 @map("recurring_rule_id")
-    recurringPeriod String?              @map("recurring_period") @db.Char(10)
-    importBatchId   String?              @map("import_batch_id") @db.Char(36)
-    deletedAt       DateTime?            @map("deleted_at")
-    txnDate         DateTime             @map("txn_date") @db.Date
-    createdAt       DateTime             @default(now()) @map("created_at")
-    updatedAt       DateTime             @updatedAt @map("updated_at")
-    user            User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
-    category        Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-    recurringRule   RecurringRule?       @relation(fields: [recurringRuleId], references: [id], onDelete: SetNull)
-    importBatch     ImportBatch?         @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
-    historyEntries  TransactionHistory[]
+    id                  String               @id @db.Char(36)
+    userId              String               @map("user_id") @db.Char(36)
+    categoryId          Int                  @map("category_id")
+    type                TransactionType
+    amount              Decimal              @db.Decimal(14, 2)
+    description         String?              @db.VarChar(255)
+    source              TransactionSource    @default(MANUAL)
+    recurringRuleId     Int?                 @map("recurring_rule_id")
+    recurringPeriod     String?              @map("recurring_period") @db.Char(10)
+    importBatchId       String?              @map("import_batch_id") @db.Char(36)
+    deletedAt           DateTime?            @map("deleted_at")
+    txnDate             DateTime             @map("txn_date") @db.Date
+    isAnomaly           Boolean              @default(false) @map("is_anomaly")
+    isPossibleDuplicate Boolean              @default(false) @map("is_possible_duplicate")
+    createdAt           DateTime             @default(now()) @map("created_at")
+    updatedAt           DateTime             @updatedAt @map("updated_at")
+    user                User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+    category            Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+    recurringRule       RecurringRule?       @relation(fields: [recurringRuleId], references: [id], onDelete: SetNull)
+    importBatch         ImportBatch?         @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+    historyEntries      TransactionHistory[]
+    recentActivities    RecentActivity[]
 
     @@unique([recurringRuleId, recurringPeriod], map: "uq_transactions_recurring_period")
     @@index([userId, txnDate], map: "idx_transactions_user_date")
@@ -398,6 +407,24 @@ model TransactionHistory {
 
     @@index([transactionId, changedAt], map: "idx_transaction_history_transaction_changed_at")
     @@map("transaction_history")
+}
+
+model RecentActivity {
+    id            BigInt             @id @default(autoincrement())
+    userId        String             @map("user_id") @db.Char(36)
+    transactionId String             @map("transaction_id") @db.Char(36)
+    activityType  RecentActivityType @map("activity_type")
+    categoryName  String             @map("category_name") @db.VarChar(50)
+    amount        Decimal            @db.Decimal(14, 2)
+    txnDate       DateTime           @map("txn_date") @db.Date
+    description   String?            @db.VarChar(255)
+    createdAt     DateTime           @default(now()) @map("created_at")
+    user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+    transaction   Transaction        @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+    @@index([userId, createdAt], map: "idx_recent_activity_user_created")
+    @@index([transactionId], map: "idx_recent_activity_transaction")
+    @@map("recent_activity")
 }
 
 model AiCategoryRule {

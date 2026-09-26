@@ -143,6 +143,37 @@ const dailyWeeklySchema = z.object({
   averageDailyExpense: z.string(),
 });
 
+const forecastItemSchema = z.object({
+  categoryId: z.number(),
+  categoryName: z.string(),
+  type: z.enum(["income", "expense"]),
+  predictedAmount: z.string(),
+  lowerBound: z.string(),
+  upperBound: z.string(),
+  insufficientData: z.boolean(),
+});
+
+const forecastSchema = z.object({
+  month: z.string(),
+  insufficientData: z.boolean(),
+  items: z.array(forecastItemSchema),
+});
+
+const recentActivitySchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      transactionId: z.string(),
+      activityType: z.enum(["viewed", "edited"]),
+      categoryName: z.string(),
+      amount: z.string(),
+      description: z.string().nullable(),
+      txnDate: z.string(),
+      createdAt: z.string(),
+    }),
+  ),
+});
+
 const wrappedDashboardSummarySchema = z.object({
   data: dashboardSummarySchema,
 });
@@ -159,10 +190,20 @@ const wrappedDailyWeeklySchema = z.object({
   data: dailyWeeklySchema,
 });
 
+const wrappedForecastSchema = z.object({
+  data: forecastSchema,
+});
+
+const wrappedRecentActivitySchema = z.object({
+  data: recentActivitySchema,
+});
+
 export type DashboardSummary = z.infer<typeof dashboardSummarySchema>;
 export type CategoryBreakdownReport = z.infer<typeof categoryBreakdownSchema>;
 export type IncomeVsExpenseReport = z.infer<typeof incomeVsExpenseSchema>;
 export type DailyWeeklyReport = z.infer<typeof dailyWeeklySchema>;
+export type NextMonthForecast = z.infer<typeof forecastSchema>;
+export type RecentActivity = z.infer<typeof recentActivitySchema>;
 
 type CategoryBreakdownFilters = {
   from: string;
@@ -243,6 +284,36 @@ export function useDailyWeeklyReport(month: string, enabled = true) {
       });
 
       return wrappedDailyWeeklySchema.parse(response.data).data;
+    },
+    enabled,
+  });
+}
+
+export function nextMonthForecastQueryKey() {
+  return ["forecast", "next-month"] as const;
+}
+
+export function useNextMonthForecast(enabled = true) {
+  return useQuery({
+    queryKey: nextMonthForecastQueryKey(),
+    queryFn: async () => {
+      const response = await api.get("/forecast/next-month");
+      return wrappedForecastSchema.parse(response.data).data;
+    },
+    enabled,
+  });
+}
+
+export function recentActivityQueryKey() {
+  return ["activity", "recent"] as const;
+}
+
+export function useRecentActivity(enabled = true) {
+  return useQuery({
+    queryKey: recentActivityQueryKey(),
+    queryFn: async () => {
+      const response = await api.get("/activity/recent");
+      return wrappedRecentActivitySchema.parse(response.data).data;
     },
     enabled,
   });

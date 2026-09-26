@@ -1,10 +1,12 @@
 import {
   createTransactionInputSchema,
   deleteTransactionResponseSchema,
+  resolveTransactionFlagInputSchema,
   transactionSchema,
   transactionsResponseSchema,
   updateTransactionInputSchema,
   type CreateTransactionInput,
+  type ResolveTransactionFlagInput,
   type Transaction,
   type TransactionType,
   type UpdateTransactionInput,
@@ -81,6 +83,21 @@ export function useDeleteTransaction() {
     mutationFn: async (payload: { id: string }) => {
       const response = await api.delete(`/transactions/${payload.id}`);
       return deleteTransactionResponseSchema.parse(response.data);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+  });
+}
+
+export function useResolveTransactionFlag() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { id: string; data: ResolveTransactionFlagInput }) => {
+      const parsedPayload = resolveTransactionFlagInputSchema.parse(payload.data);
+      const response = await api.post(`/transactions/${payload.id}/resolve-flag`, parsedPayload);
+      return response.data as { resolved: true; deleted?: boolean };
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });

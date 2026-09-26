@@ -9,6 +9,12 @@ import { useChartPalette } from "./useChartPalette";
 type LineSeries = {
   label: string;
   values: Array<string>;
+  fill?: boolean | "origin" | "start" | "end" | "+1" | "-1";
+  borderWidth?: number;
+  pointRadius?: number;
+  borderColor?: string;
+  backgroundColor?: string;
+  tension?: number;
 };
 
 type LineChartProps = {
@@ -28,11 +34,12 @@ export default function LineChart({ title, subtitle, labels, series, caption }: 
       datasets: series.map((item, index) => ({
         label: item.label,
         data: item.values.map((value) => Number(value)),
-        borderColor: palette.series[index % palette.series.length],
-        backgroundColor: palette.series[index % palette.series.length],
-        tension: 0.3,
-        pointRadius: 2,
-        fill: false,
+        borderColor: item.borderColor ?? palette.series[index % palette.series.length],
+        backgroundColor: item.backgroundColor ?? palette.series[index % palette.series.length],
+        tension: item.tension ?? 0.3,
+        pointRadius: item.pointRadius ?? 2,
+        borderWidth: item.borderWidth ?? 2,
+        fill: item.fill ?? false,
       })),
     }),
     [labels, palette.series, series],

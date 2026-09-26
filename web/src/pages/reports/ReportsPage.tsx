@@ -10,6 +10,7 @@ import {
   useCategoryBreakdownReport,
   useDailyWeeklyReport,
   useIncomeVsExpenseReport,
+  useNextMonthForecast,
   useShareMonthlyReport,
 } from "@/features/analytics/hooks";
 import { useCategories } from "@/features/categories/hooks";
@@ -138,6 +139,17 @@ export default function ReportsPage() {
 
   const incomeExpenseQuery = useIncomeVsExpenseReport(6, tab === "income-expense");
   const dailyWeeklyQuery = useDailyWeeklyReport(month, tab === "daily-weekly");
+  const forecastQuery = useNextMonthForecast(tab === "forecast");
+
+  const forecastItems = useMemo(() => {
+    const items = forecastQuery.data?.items ?? [];
+    const byType = items.filter((item) => item.type === type);
+    if (categoryIds.length === 0) {
+      return byType;
+    }
+
+    return byType.filter((item) => categoryIds.includes(item.categoryId));
+  }, [categoryIds, forecastQuery.data?.items, type]);
 
   const categorySeries = useMemo(() => {
     const items = categoryReportQuery.data?.items ?? [];
@@ -532,10 +544,46 @@ export default function ReportsPage() {
         ) : null}
 
         {tab === "forecast" ? (
-          <section className="panel reports-placeholder">
-            <h3>{en.reports.tabs.forecast}</h3>
-            <p>{en.reports.forecastPlaceholder}</p>
-          </section>
+          forecastQuery.isLoading ? (
+            <p>{en.common.loadingLabel}</p>
+          ) : forecastQuery.data?.insufficientData ? (
+            <section className="panel reports-placeholder">
+              <h3>{en.reports.tabs.forecast}</h3>
+              <p>{en.reports.forecastNotEnoughData}</p>
+            </section>
+          ) : (
+            <LineChart
+              title={en.reports.tabs.forecast}
+              subtitle={forecastQuery.data?.month}
+              labels={forecastItems.map((item) => item.categoryName)}
+              series={[
+                {
+                  label: en.reports.forecastSeries.lower,
+                  values: forecastItems.map((item) => item.lowerBound),
+                  borderWidth: 1,
+                  pointRadius: 1,
+                },
+                {
+                  label: en.reports.forecastSeries.upper,
+                  values: forecastItems.map((item) => item.upperBound),
+                  borderWidth: 1,
+                  pointRadius: 1,
+                  fill: "-1",
+                  backgroundColor: "rgba(68, 138, 255, 0.18)",
+                  borderColor: "rgba(68, 138, 255, 0.7)",
+                },
+                {
+                  label: en.reports.forecastSeries.predicted,
+                  values: forecastItems.map((item) => item.predictedAmount),
+                  borderWidth: 2,
+                  pointRadius: 2,
+                  borderColor: "#1458d8",
+                  backgroundColor: "#1458d8",
+                },
+              ]}
+              caption={en.reports.a11y.forecastTableCaption}
+            />
+          )
         ) : null}
       </div>
     </section>

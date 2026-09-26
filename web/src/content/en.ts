@@ -233,6 +233,12 @@ export const en = {
       recurring: "Recurring",
       csvImport: "CSV import",
     },
+    flags: {
+      anomalyBadge: "Unusual amount",
+      duplicateBadge: "Possible duplicate",
+      keepAction: "Keep",
+      deleteDuplicateAction: "Delete duplicate",
+    },
     emptyState: "No transactions in this month yet.",
     messages: {
       created: "Transaction created successfully.",
@@ -242,6 +248,8 @@ export const en = {
       switchedTypeToCreate: "Switched to {type} because the current tab has no categories.",
       saveFailed: "Unable to save transaction.",
       deleteFailed: "Unable to delete transaction.",
+      flagResolved: "Transaction flag resolved.",
+      flagResolveFailed: "Unable to resolve this transaction flag.",
     },
   },
   imports: {
@@ -321,6 +329,12 @@ export const en = {
       netTrend: "Net trend",
       savingsGoal: "Savings goal",
       latestInsight: "Latest insight",
+      recentActivity: "Recent activity",
+    },
+    recentActivityEmpty: "No recent activity yet.",
+    recentActivityLabels: {
+      viewed: "Viewed",
+      edited: "Edited",
     },
     latestInsightAiLabel: "AI-generated insight - for reference only",
     latestInsightViewAction: "View all insights",
@@ -345,6 +359,12 @@ export const en = {
     weeklyChartTitle: "Weekly totals (current month)",
     forecastPlaceholder:
       "Forecast report is planned for Phase 13. This placeholder confirms the tab and routing behavior.",
+    forecastNotEnoughData: "Not enough data yet. At least two months are needed for a forecast.",
+    forecastSeries: {
+      lower: "Lower bound",
+      upper: "Upper bound",
+      predicted: "Predicted",
+    },
     tabsAriaLabel: "Report types",
     tabs: {
       categoryBreakdown: "By category",
@@ -391,6 +411,7 @@ export const en = {
       incomeExpenseTableCaption: "Income versus expense by month",
       dailyWeeklyTableCaption: "Daily and weekly report table",
       weeklyTableCaption: "Weekly totals report table",
+      forecastTableCaption: "Forecast table with prediction and uncertainty bounds",
     },
   },
   insights: {

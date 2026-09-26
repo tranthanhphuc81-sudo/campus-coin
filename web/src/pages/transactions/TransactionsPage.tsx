@@ -17,6 +17,7 @@ import { useCategories } from "@/features/categories/hooks";
 import {
   useCreateTransaction,
   useDeleteTransaction,
+  useResolveTransactionFlag,
   useTransactions,
   useUpdateTransaction,
 } from "@/features/transactions/hooks";
@@ -85,6 +86,7 @@ export default function TransactionsPage() {
   const createMutation = useCreateTransaction();
   const updateMutation = useUpdateTransaction();
   const deleteMutation = useDeleteTransaction();
+  const resolveFlagMutation = useResolveTransactionFlag();
 
   const expenseCategories = useMemo(
     () => expenseCategoriesQuery.data ?? [],
@@ -216,6 +218,8 @@ export default function TransactionsPage() {
       amount: "",
       description: null,
       source: "manual",
+      isAnomaly: false,
+      isPossibleDuplicate: false,
       txnDate: toDateInput(new Date()),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -429,11 +433,109 @@ export default function TransactionsPage() {
                 <tr key={transaction.id}>
                   <td>{transaction.txnDate}</td>
                   <td>{transaction.categoryName}</td>
-                  <td>{transaction.description || "-"}</td>
+                  <td>
+                    <div>
+                      <p>{transaction.description || "-"}</p>
+                      {transaction.isAnomaly ? (
+                        <span className="badge text-bg-warning">
+                          {en.transactions.flags.anomalyBadge}
+                        </span>
+                      ) : null}
+                      {transaction.isPossibleDuplicate ? (
+                        <span className="badge text-bg-danger">
+                          {en.transactions.flags.duplicateBadge}
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
                   <td>{formatMoney(transaction.amount)}</td>
                   <td>{sourceLabel(transaction.source)}</td>
                   <td>
                     <div className="category-card__actions">
+                      {transaction.isAnomaly ? (
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          disabled={resolveFlagMutation.isPending}
+                          onClick={() => {
+                            void resolveFlagMutation
+                              .mutateAsync({
+                                id: transaction.id,
+                                data: {
+                                  flag: "anomaly",
+                                  action: "keep",
+                                },
+                              })
+                              .then(() => {
+                                setFlashMessage(en.transactions.messages.flagResolved);
+                              })
+                              .catch((error: unknown) => {
+                                const problem = parseProblem(error);
+                                setFlashMessage(
+                                  problem.detail || en.transactions.messages.flagResolveFailed,
+                                );
+                              });
+                          }}
+                        >
+                          {en.transactions.flags.keepAction}
+                        </button>
+                      ) : null}
+                      {transaction.isPossibleDuplicate ? (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            disabled={resolveFlagMutation.isPending}
+                            onClick={() => {
+                              void resolveFlagMutation
+                                .mutateAsync({
+                                  id: transaction.id,
+                                  data: {
+                                    flag: "duplicate",
+                                    action: "keep",
+                                  },
+                                })
+                                .then(() => {
+                                  setFlashMessage(en.transactions.messages.flagResolved);
+                                })
+                                .catch((error: unknown) => {
+                                  const problem = parseProblem(error);
+                                  setFlashMessage(
+                                    problem.detail || en.transactions.messages.flagResolveFailed,
+                                  );
+                                });
+                            }}
+                          >
+                            {en.transactions.flags.keepAction}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            disabled={resolveFlagMutation.isPending}
+                            onClick={() => {
+                              void resolveFlagMutation
+                                .mutateAsync({
+                                  id: transaction.id,
+                                  data: {
+                                    flag: "duplicate",
+                                    action: "delete",
+                                  },
+                                })
+                                .then(() => {
+                                  setFlashMessage(en.transactions.messages.deleted);
+                                })
+                                .catch((error: unknown) => {
+                                  const problem = parseProblem(error);
+                                  setFlashMessage(
+                                    problem.detail || en.transactions.messages.flagResolveFailed,
+                                  );
+                                });
+                            }}
+                          >
+                            {en.transactions.flags.deleteDuplicateAction}
+                          </button>
+                        </>
+                      ) : null}
                       <button
                         type="button"
                         className="btn btn-outline"

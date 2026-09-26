@@ -209,4 +209,107 @@ describe("Transactions endpoints", () => {
     expect(response.status).toBe(401);
     expect(response.body.type).toBe("https://campus-coin.dev/problems/unauthenticated");
   });
+
+  it("resolves duplicate flag with keep or delete action", async () => {
+    const session = await registerAndLogin("tx.owner@campus-coin.local", "Transaction Owner");
+
+    const category = await prisma.category.create({
+      data: {
+        userId: session.userId,
+        name: "Snacks",
+        type: "EXPENSE",
+        isDefault: false,
+        isActive: true,
+      },
+    });
+
+    const flagged = await prisma.transaction.create({
+      data: {
+        id: crypto.randomUUID(),
+        userId: session.userId,
+        categoryId: category.id,
+        type: "EXPENSE",
+        amount: "12.00",
+        description: "Snack bar",
+        txnDate: new Date("2026-09-18T00:00:00.000Z"),
+        isPossibleDuplicate: true,
+      },
+    });
+
+    const keepResponse = await request(APP)
+      .post(`/api/v1/transactions/${flagged.id}/resolve-flag`)
+      .set("Authorization", `Bearer ${session.accessToken}`)
+      .send({
+        flag: "duplicate",
+        action: "keep",
+      });
+
+    expect(keepResponse.status).toBe(200);
+    expect(keepResponse.body).toEqual({ resolved: true });
+
+    const kept = await prisma.transaction.findUnique({ where: { id: flagged.id } });
+    expect(kept?.isPossibleDuplicate).toBe(false);
+
+    const secondFlagged = await prisma.transaction.create({
+      data: {
+        id: crypto.randomUUID(),
+        userId: session.userId,
+        categoryId: category.id,
+        type: "EXPENSE",
+        amount: "12.00",
+        description: "Snack bar duplicate",
+        txnDate: new Date("2026-09-18T00:00:00.000Z"),
+        isPossibleDuplicate: true,
+      },
+    });
+
+    const deleteResponse = await request(APP)
+      .post(`/api/v1/transactions/${secondFlagged.id}/resolve-flag`)
+      .set("Authorization", `Bearer ${session.accessToken}`)
+      .send({
+        flag: "duplicate",
+        action: "delete",
+      });
+
+    expect(deleteResponse.status).toBe(200);
+    expect(deleteResponse.body).toEqual({ resolved: true, deleted: true });
+
+    const deleted = await prisma.transaction.findUnique({ where: { id: secondFlagged.id } });
+    expect(deleted?.deletedAt).not.toBeNull();
+  });
+
+  it("returns 404 when user B resolves flags on user A transaction", async () => {
+    const owner = await registerAndLogin("tx.owner@campus-coin.local", "Transaction Owner");
+    const other = await registerAndLogin("tx.other@campus-coin.local", "Transaction Other");
+
+    const category = await prisma.category.create({
+      data: {
+        userId: owner.userId,
+        name: "Groceries",
+        type: "EXPENSE",
+        isDefault: false,
+        isActive: true,
+      },
+    });
+
+    const transaction = await prisma.transaction.create({
+      data: {
+        id: crypto.randomUUID(),
+        userId: owner.userId,
+        categoryId: category.id,
+        type: "EXPENSE",
+        amount: "32.00",
+        txnDate: new Date("2026-09-19T00:00:00.000Z"),
+        isPossibleDuplicate: true,
+      },
+    });
+
+    const response = await request(APP)
+      .post(`/api/v1/transactions/${transaction.id}/resolve-flag`)
+      .set("Authorization", `Bearer ${other.accessToken}`)
+      .send({ flag: "duplicate", action: "keep" });
+
+    expect(response.status).toBe(404);
+    expect(response.body.type).toBe("https://campus-coin.dev/problems/not-found");
+  });
 });

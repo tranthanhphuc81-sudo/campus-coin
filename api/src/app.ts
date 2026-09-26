@@ -13,6 +13,7 @@ import { AppError, notFound, rateLimited } from "./lib/problem.js";
 import { prisma } from "./lib/prisma.js";
 import { registerBudgetAlertHandler } from "./events/handlers/budgetAlert.js";
 import { registerAiLearningHandler } from "./events/handlers/aiLearning.js";
+import { registerAnomalyHandler } from "./events/handlers/anomaly.js";
 import { meHandler, patchMeHandler } from "./modules/auth/controller.js";
 import { updateProfileSchema } from "./modules/auth/schema.js";
 import { adminAuthRouter, authRouter } from "./modules/auth/routes.js";
@@ -26,11 +27,14 @@ import { aiRouter } from "./modules/ai/routes.js";
 import { importsRouter } from "./modules/imports/routes.js";
 import { insightsRouter } from "./modules/insights/routes.js";
 import { tipsRouter } from "./modules/tips/routes.js";
+import { forecastRouter } from "./modules/forecast/routes.js";
+import { activityRouter } from "./modules/activity/routes.js";
 import { validate } from "./middlewares/validate.js";
 
 export function createApp() {
   registerBudgetAlertHandler();
   registerAiLearningHandler();
+  registerAnomalyHandler();
 
   const app = express();
 
@@ -95,6 +99,8 @@ export function createApp() {
   apiRouter.use("/notifications", notificationsRouter);
   apiRouter.use("/dashboard", dashboardRouter);
   apiRouter.use("/reports", reportsRouter);
+  apiRouter.use("/forecast", forecastRouter);
+  apiRouter.use("/activity", activityRouter);
   apiRouter.use("/ai", aiRouter);
   apiRouter.use("/insights", insightsRouter);
   apiRouter.use("/tips", tipsRouter);

@@ -3,7 +3,7 @@ import WidgetErrorBoundary from "@/components/common/WidgetErrorBoundary";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { en } from "@/content/en";
-import { useDashboardSummary } from "@/features/analytics/hooks";
+import { useDashboardSummary, useRecentActivity } from "@/features/analytics/hooks";
 import { useDismissTip, usePinTip, useUnpinTip } from "@/features/tips/hooks";
 import { formatMoney } from "@/lib/money";
 
@@ -113,6 +113,7 @@ export default function StudentHomePage() {
   const month = toIsoMonth(new Date());
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const dashboardQuery = useDashboardSummary(month, timezone);
+  const recentActivityQuery = useRecentActivity();
   const summary = dashboardQuery.data;
 
   return (
@@ -304,6 +305,37 @@ export default function StudentHomePage() {
                   </>
                 ) : (
                   <p>{en.dashboard.latestInsightPlaceholder}</p>
+                )}
+              </section>
+            </DashboardWidget>
+          </WidgetErrorBoundary>
+        </div>
+
+        <div className="col">
+          <WidgetErrorBoundary fallback={<WidgetErrorFallback />}>
+            <DashboardWidget
+              isLoading={recentActivityQuery.isLoading}
+              error={recentActivityQuery.error}
+            >
+              <section className="dashboard-widget panel">
+                <h3>{en.dashboard.widgets.recentActivity}</h3>
+                {(recentActivityQuery.data?.items ?? []).length > 0 ? (
+                  <ul className="dashboard-recent-list">
+                    {(recentActivityQuery.data?.items ?? []).slice(0, 5).map((item) => (
+                      <li key={item.id}>
+                        <strong>{item.categoryName}</strong>
+                        <p className="money-value">{formatMoney(item.amount)}</p>
+                        <p className="dashboard-widget__meta">
+                          {item.txnDate} ·
+                          {item.activityType === "edited"
+                            ? en.dashboard.recentActivityLabels.edited
+                            : en.dashboard.recentActivityLabels.viewed}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="dashboard-widget__meta">{en.dashboard.recentActivityEmpty}</p>
                 )}
               </section>
             </DashboardWidget>

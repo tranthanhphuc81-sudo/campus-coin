@@ -217,6 +217,8 @@ export const transactionSchema = z.object({
   amount: z.string().regex(/^(?:0|[1-9]\d{0,11})(?:\.\d{1,2})?$/),
   description: z.string().nullable(),
   source: transactionSourceSchema,
+  isAnomaly: z.boolean(),
+  isPossibleDuplicate: z.boolean(),
   txnDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -264,6 +266,11 @@ export const updateTransactionInputSchema = z
 
 export const deleteTransactionResponseSchema = z.object({
   deleted: z.boolean(),
+});
+
+export const resolveTransactionFlagInputSchema = z.object({
+  flag: z.enum(["anomaly", "duplicate"]),
+  action: z.enum(["keep", "delete"]),
 });
 
 export const notificationTypeSchema = z.enum([
@@ -331,6 +338,7 @@ export type TransactionSource = z.infer<typeof transactionSourceSchema>;
 export type Transaction = z.infer<typeof transactionSchema>;
 export type CreateTransactionInput = z.infer<typeof createTransactionInputSchema>;
 export type UpdateTransactionInput = z.infer<typeof updateTransactionInputSchema>;
+export type ResolveTransactionFlagInput = z.infer<typeof resolveTransactionFlagInputSchema>;
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 export type Notification = z.infer<typeof notificationSchema>;
 export type AiSuggestion = z.infer<typeof aiSuggestionSchema>;

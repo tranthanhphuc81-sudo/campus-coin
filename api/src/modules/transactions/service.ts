@@ -2,6 +2,7 @@ import { CategoryType, Prisma, TransactionSource, TransactionType } from "@prism
 import { uuidv7 } from "uuidv7";
 
 import { domainEventBus } from "../../events/bus.js";
+import { recordRecentActivity } from "../../lib/recentActivity.js";
 import { notFound, validationFailed } from "../../lib/problem.js";
 import {
   createTransaction,
@@ -10,10 +11,12 @@ import {
   listOwnedTransactions,
   softDeleteOwnedTransaction,
   updateOwnedTransaction,
+  updateOwnedTransactionFlags,
 } from "./repository.js";
 import type {
   CreateTransactionInput,
   ListTransactionsQueryInput,
+  ResolveTransactionFlagInput,
   TransactionDto,
   TransactionWireSource,
   TransactionWireType,
@@ -78,6 +81,8 @@ function mapTransactionToDto(transaction: {
   amount: Prisma.Decimal;
   description: string | null;
   source: TransactionSource;
+  isAnomaly: boolean;
+  isPossibleDuplicate: boolean;
   txnDate: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -90,6 +95,8 @@ function mapTransactionToDto(transaction: {
     amount: formatAmount(transaction.amount),
     description: transaction.description,
     source: toWireSource(transaction.source),
+    isAnomaly: transaction.isAnomaly,
+    isPossibleDuplicate: transaction.isPossibleDuplicate,
     txnDate: toDateOnlyString(transaction.txnDate),
     createdAt: toIsoString(transaction.createdAt),
     updatedAt: toIsoString(transaction.updatedAt),
@@ -277,6 +284,16 @@ export async function patchTransaction(
     },
   });
 
+  await recordRecentActivity({
+    userId,
+    transactionId: updated.id,
+    activityType: "EDITED",
+    categoryName: updated.category.name,
+    amount: updated.amount,
+    txnDate: updated.txnDate,
+    description: updated.description,
+  });
+
   return mapTransactionToDto(updated);
 }
 
@@ -300,4 +317,60 @@ export async function removeTransaction(userId: string, id: string): Promise<{ d
   });
 
   return { deleted: true };
+}
+
+export async function resolveTransactionFlag(
+  userId: string,
+  id: string,
+  payload: ResolveTransactionFlagInput,
+): Promise<{ resolved: true; deleted?: boolean }> {
+  const existing = await findOwnedActiveTransactionById({ id, userId });
+  if (!existing) {
+    throw notFound("Transaction was not found.");
+  }
+
+  if (payload.action === "delete") {
+    await softDeleteOwnedTransaction({ id, userId });
+
+    domainEventBus.emit("transaction.deleted", {
+      transaction: {
+        transactionId: existing.id,
+        userId,
+        categoryId: existing.categoryId,
+        type: toWireType(existing.type),
+        amount: formatAmount(existing.amount),
+        txnDate: toDateOnlyString(existing.txnDate),
+      },
+    });
+
+    return { resolved: true, deleted: true };
+  }
+
+  await updateOwnedTransactionFlags({
+    id,
+    userId,
+    data:
+      payload.flag === "anomaly"
+        ? { isAnomaly: false }
+        : {
+            isPossibleDuplicate: false,
+          },
+  });
+
+  const updated = await findOwnedActiveTransactionById({ id, userId });
+  if (!updated) {
+    throw notFound("Transaction was not found.");
+  }
+
+  await recordRecentActivity({
+    userId,
+    transactionId: updated.id,
+    activityType: "EDITED",
+    categoryName: updated.category.name,
+    amount: updated.amount,
+    txnDate: updated.txnDate,
+    description: updated.description,
+  });
+
+  return { resolved: true };
 }

@@ -102,3 +102,18 @@ export async function softDeleteOwnedTransaction(params: {
     },
   });
 }
+
+export async function updateOwnedTransactionFlags(params: {
+  id: string;
+  userId: string;
+  data: Prisma.TransactionUpdateInput;
+}): Promise<void> {
+  await prisma.transaction.updateMany({
+    where: {
+      id: params.id,
+      userId: params.userId,
+      deletedAt: null,
+    },
+    data: params.data,
+  });
+}

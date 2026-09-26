@@ -7,10 +7,12 @@ import {
   deleteTransactionHandler,
   listTransactionsHandler,
   patchTransactionHandler,
+  resolveTransactionFlagHandler,
 } from "./controller.js";
 import {
   createTransactionBodySchema,
   listTransactionsQuerySchema,
+  resolveFlagBodySchema,
   transactionIdParamsSchema,
   updateTransactionBodySchema,
 } from "./schema.js";
@@ -37,4 +39,9 @@ transactionsRouter.delete(
   "/:id",
   validate({ params: transactionIdParamsSchema }),
   deleteTransactionHandler,
+);
+transactionsRouter.post(
+  "/:id/resolve-flag",
+  validate({ params: transactionIdParamsSchema, body: resolveFlagBodySchema }),
+  resolveTransactionFlagHandler,
 );
