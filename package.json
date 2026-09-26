@@ -21,6 +21,9 @@
     "db:reset": "npm run db:reset -w api",
     "db:studio": "npm run db:studio -w api",
     "db:seed": "npm run db:seed -w api",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d mysql mailpit",
+    "db:down": "docker compose -f docker-compose.dev.yml down",
+    "db:logs": "docker compose -f docker-compose.dev.yml logs -f mysql",
     "db:export-schema": "node tools/export-schema.mjs",
     "keys:generate": "node tools/generate-jwt-keys.mjs"
   },

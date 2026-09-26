@@ -15,7 +15,9 @@ import VerifyEmailPage from "@/pages/auth/VerifyEmailPage";
 import NotFoundPage from "@/pages/errors/NotFoundPage";
 import AdminHomePage from "@/pages/home/AdminHomePage";
 import ManageCategoriesPage from "@/pages/categories/ManageCategoriesPage";
+import BudgetsPage from "@/pages/budgets/BudgetsPage";
 import StudentHomePage from "@/pages/home/StudentHomePage";
+import TransactionsPage from "@/pages/transactions/TransactionsPage";
 
 export default function App() {
   return (
@@ -34,6 +36,8 @@ export default function App() {
           <Route element={<StudentLayout />}>
             <Route path={en.routes.home} element={<StudentHomePage />} />
             <Route path={en.routes.manageCategories} element={<ManageCategoriesPage />} />
+            <Route path={en.routes.transactions} element={<TransactionsPage />} />
+            <Route path={en.routes.budgets} element={<BudgetsPage />} />
           </Route>
         </Route>
 

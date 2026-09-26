@@ -11,12 +11,18 @@ import { errorHandler } from "./middlewares/errorHandler.js";
 import { requireAuth } from "./middlewares/auth.js";
 import { AppError, notFound, rateLimited } from "./lib/problem.js";
 import { prisma } from "./lib/prisma.js";
+import { registerBudgetAlertHandler } from "./events/handlers/budgetAlert.js";
 import { meHandler } from "./modules/auth/controller.js";
 import { adminAuthRouter, authRouter } from "./modules/auth/routes.js";
+import { budgetsRouter } from "./modules/budgets/routes.js";
 import { categoriesRouter } from "./modules/categories/routes.js";
+import { notificationsRouter } from "./modules/notifications/routes.js";
 import { recurringRulesRouter } from "./modules/recurring-rules/routes.js";
+import { transactionsRouter } from "./modules/transactions/routes.js";
 
 export function createApp() {
+  registerBudgetAlertHandler();
+
   const app = express();
 
   app.set("trust proxy", 1);
@@ -73,7 +79,10 @@ export function createApp() {
   apiRouter.use("/auth", authRouter);
   apiRouter.use("/admin/auth", adminAuthRouter);
   apiRouter.use("/categories", categoriesRouter);
+  apiRouter.use("/transactions", transactionsRouter);
   apiRouter.use("/recurring-rules", recurringRulesRouter);
+  apiRouter.use("/budgets", budgetsRouter);
+  apiRouter.use("/notifications", notificationsRouter);
   apiRouter.get("/me", requireAuth, meHandler);
 
   app.get("/health", (_req, res) => {

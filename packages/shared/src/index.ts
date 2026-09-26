@@ -146,6 +146,133 @@ export const deleteCategoryResponseSchema = z.object({
   archived: z.boolean(),
 });
 
+export const budgetLevelSchema = z.enum(["ok", "near", "exceeded"]);
+
+export const budgetSchema = z.object({
+  id: z.number().int().nonnegative(),
+  categoryId: z.number().int().positive(),
+  categoryName: z.string(),
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  limitAmount: z.string(),
+  alertThresholdPct: z.number().int().min(50).max(100),
+  spent: z.string(),
+  percent: z.number(),
+  level: budgetLevelSchema,
+});
+
+export const budgetsResponseSchema = z.object({
+  data: z.array(budgetSchema),
+});
+
+export const upsertBudgetsInputSchema = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  items: z
+    .array(
+      z.object({
+        categoryId: z.number().int().positive(),
+        limitAmount: z
+          .string()
+          .trim()
+          .regex(/^(?:0|[1-9]\d{0,11})(?:\.\d{1,2})?$/),
+        alertThresholdPct: z.number().int().min(50).max(100),
+      }),
+    )
+    .min(1),
+});
+
+export const copyPreviousBudgetsInputSchema = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+});
+
+export const copyPreviousBudgetsResponseSchema = z.object({
+  copied: z.number().int().min(0),
+  data: z.array(budgetSchema),
+});
+
+export const transactionTypeSchema = z.enum(["income", "expense"]);
+export const transactionSourceSchema = z.enum(["manual", "recurring", "csv_import"]);
+
+export const transactionSchema = z.object({
+  id: z.string().uuid(),
+  categoryId: z.number().int().positive(),
+  categoryName: z.string().min(1),
+  type: transactionTypeSchema,
+  amount: z.string().regex(/^(?:0|[1-9]\d{0,11})(?:\.\d{1,2})?$/),
+  description: z.string().nullable(),
+  source: transactionSourceSchema,
+  txnDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export const transactionsResponseSchema = z.object({
+  data: z.array(transactionSchema),
+});
+
+export const createTransactionInputSchema = z.object({
+  categoryId: z.number().int().positive(),
+  type: transactionTypeSchema,
+  amount: z
+    .string()
+    .trim()
+    .regex(/^(?:0|[1-9]\d{0,11})(?:\.\d{1,2})?$/),
+  description: z.string().trim().max(255).optional(),
+  txnDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export const updateTransactionInputSchema = z
+  .object({
+    categoryId: z.number().int().positive().optional(),
+    type: transactionTypeSchema.optional(),
+    amount: z
+      .string()
+      .trim()
+      .regex(/^(?:0|[1-9]\d{0,11})(?:\.\d{1,2})?$/)
+      .optional(),
+    description: z.string().trim().max(255).nullable().optional(),
+    txnDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+  })
+  .refine((payload) => Object.keys(payload).length > 0, {
+    message: "At least one field is required.",
+  });
+
+export const deleteTransactionResponseSchema = z.object({
+  deleted: z.boolean(),
+});
+
+export const notificationTypeSchema = z.enum([
+  "budget_near",
+  "budget_exceeded",
+  "insight_ready",
+  "anomaly",
+  "duplicate",
+  "system",
+]);
+
+export const notificationSchema = z.object({
+  id: z.string(),
+  type: notificationTypeSchema,
+  title: z.string(),
+  body: z.string(),
+  payload: z.unknown().nullable().optional(),
+  readAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const notificationsResponseSchema = z.object({
+  data: z.array(notificationSchema),
+  meta: z.object({
+    page: z.number().int().min(1),
+    limit: z.number().int().min(1).max(100),
+    total: z.number().int().min(0),
+    totalPages: z.number().int().min(1),
+  }),
+  unreadCount: z.number().int().min(0),
+});
+
 export type AuthRole = z.infer<typeof authRoleSchema>;
 export type RegisterInput = z.infer<typeof registerInputSchema>;
 export type LoginInput = z.infer<typeof loginInputSchema>;
@@ -159,3 +286,14 @@ export type CategoryType = z.infer<typeof categoryTypeSchema>;
 export type Category = z.infer<typeof categorySchema>;
 export type CreateCategoryInput = z.infer<typeof createCategoryInputSchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategoryInputSchema>;
+export type BudgetLevel = z.infer<typeof budgetLevelSchema>;
+export type Budget = z.infer<typeof budgetSchema>;
+export type UpsertBudgetsInput = z.infer<typeof upsertBudgetsInputSchema>;
+export type CopyPreviousBudgetsInput = z.infer<typeof copyPreviousBudgetsInputSchema>;
+export type TransactionType = z.infer<typeof transactionTypeSchema>;
+export type TransactionSource = z.infer<typeof transactionSourceSchema>;
+export type Transaction = z.infer<typeof transactionSchema>;
+export type CreateTransactionInput = z.infer<typeof createTransactionInputSchema>;
+export type UpdateTransactionInput = z.infer<typeof updateTransactionInputSchema>;
+export type NotificationType = z.infer<typeof notificationTypeSchema>;
+export type Notification = z.infer<typeof notificationSchema>;

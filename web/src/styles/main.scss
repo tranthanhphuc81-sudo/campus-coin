@@ -385,7 +385,193 @@ input,
   gap: 0.5rem;
 }
 
+.budgets-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.budgets-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.budgets-page__actions {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  align-items: end;
+  gap: 0.5rem;
+}
+
+.budgets-table-wrapper {
+  overflow-x: auto;
+}
+
+.budgets-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 50rem;
+}
+
+.budgets-table th,
+.budgets-table td {
+  padding: 0.625rem;
+  border-bottom: 1px solid var(--cc-border);
+  vertical-align: top;
+}
+
+.budgets-table th {
+  text-align: left;
+}
+
+.budget-progress {
+  width: 100%;
+  height: 0.625rem;
+  border-radius: 999rem;
+  background: color-mix(in srgb, var(--cc-border) 65%, transparent);
+  overflow: hidden;
+}
+
+.budget-progress__bar {
+  height: 100%;
+  transition: width 180ms ease;
+}
+
+.budget-progress--ok .budget-progress__bar {
+  background: var(--cc-income);
+}
+
+.budget-progress--near .budget-progress__bar {
+  background: var(--cc-warning);
+}
+
+.budget-progress--exceeded .budget-progress__bar {
+  background: var(--cc-expense);
+}
+
+.budget-progress__text {
+  margin-top: 0.375rem;
+  margin-bottom: 0;
+  font-size: 0.875rem;
+}
+
+.notification-bell {
+  position: relative;
+}
+
+.notification-bell__toggle {
+  min-width: 3rem;
+}
+
+.notification-bell__badge {
+  min-width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999rem;
+  padding: 0 0.25rem;
+  background: var(--cc-expense);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-grid;
+  place-items: center;
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: min(24rem, 90vw);
+  border-radius: 0.75rem;
+  border: 1px solid var(--cc-border);
+  background: var(--cc-surface);
+  box-shadow: var(--cc-shadow-1);
+  z-index: 35;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.notification-dropdown__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.notification-dropdown__empty {
+  margin: 0;
+}
+
+.notification-dropdown__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  max-height: 20rem;
+  overflow: auto;
+}
+
+.notification-dropdown__list li button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--cc-border);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: inherit;
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.notification-dropdown__list li.is-unread button {
+  border-color: color-mix(in srgb, var(--cc-primary) 40%, var(--cc-border));
+}
+
+.notification-item__title {
+  font-weight: 600;
+}
+
+.notification-item__body,
+.notification-item__time {
+  font-size: 0.875rem;
+  color: var(--cc-text-muted);
+}
+
+.notification-toast-stack {
+  position: fixed;
+  right: 1rem;
+  bottom: 5.25rem;
+  display: grid;
+  gap: 0.5rem;
+  z-index: 45;
+}
+
+.notification-toast {
+  width: min(24rem, calc(100vw - 2rem));
+  border-radius: 0.75rem;
+  border: 1px solid var(--cc-border);
+  background: var(--cc-surface);
+  box-shadow: var(--cc-shadow-1);
+  padding: 0.625rem 0.75rem;
+}
+
+.notification-toast p {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+}
+
 @media (max-width: 61.99875rem) {
+  .budgets-page__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .budgets-page__actions {
+    grid-template-columns: 1fr;
+  }
+
   .page-grid {
     grid-template-columns: 1fr;
   }

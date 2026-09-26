@@ -70,6 +70,7 @@ type MinimalRecurringPrismaClient = {
       id: string;
       userId: string;
       categoryId: number;
+      type: TransactionType;
       amount: Prisma.Decimal;
       txnDate: Date;
     }>;
@@ -77,14 +78,18 @@ type MinimalRecurringPrismaClient = {
 };
 
 type TransactionCreatedPublisher = {
-  emit: (eventName: "transaction.created", payload: {
-    transactionId: string;
-    userId: string;
-    categoryId: number;
-    amount: string;
-    txnDate: string;
-    source: "recurring";
-  }) => void;
+  emit: (
+    eventName: "transaction.created",
+    payload: {
+      transactionId: string;
+      userId: string;
+      categoryId: number;
+      type: "income" | "expense";
+      amount: string;
+      txnDate: string;
+      source: "recurring";
+    },
+  ) => void;
 };
 
 const defaultLogger: Logger = {
@@ -138,7 +143,8 @@ function getIsoWeek(date: Date): { weekYear: number; weekNumber: number } {
   const weekYear = thursday.getUTCFullYear();
   const januaryFourth = new Date(Date.UTC(weekYear, 0, 4));
   const firstWeekMonday = startOfIsoWeek(januaryFourth);
-  const weekNumber = Math.floor((thursday.getTime() - firstWeekMonday.getTime()) / 86400000 / 7) + 1;
+  const weekNumber =
+    Math.floor((thursday.getTime() - firstWeekMonday.getTime()) / 86400000 / 7) + 1;
 
   return { weekYear, weekNumber };
 }
@@ -198,7 +204,9 @@ export function computeInitialNextRunDate(rule: RecurringRuleForSchedule): Date 
     const monday = startOfIsoWeek(baseDate);
     const isoDay = toIsoDay(rule.dayOfWeek, baseDate);
     const candidate = addDays(monday, isoDay - 1);
-    return candidate < baseDate ? addDays(candidate, Math.max(1, rule.intervalCount) * 7) : candidate;
+    return candidate < baseDate
+      ? addDays(candidate, Math.max(1, rule.intervalCount) * 7)
+      : candidate;
   }
 
   if (rule.frequency === RecurringFrequency.MONTHLY) {
@@ -229,10 +237,7 @@ function getTodayInTimezone(timezone: string): Date {
 }
 
 function isUniqueViolation(error: unknown): boolean {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2002"
-  );
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
 export async function runRecurringMaterialization(options?: {
@@ -293,6 +298,7 @@ export async function runRecurringMaterialization(options?: {
           transactionId: transaction.id,
           userId: transaction.userId,
           categoryId: transaction.categoryId,
+          type: transaction.type === "EXPENSE" ? "expense" : "income",
           amount: transaction.amount.toString(),
           txnDate: formatDateOnly(transaction.txnDate),
           source: "recurring",
@@ -346,7 +352,9 @@ export function toRecurringType(type: "income" | "expense"): TransactionType {
   return type === "income" ? "INCOME" : "EXPENSE";
 }
 
-export function toRecurringFrequency(frequency: "weekly" | "monthly" | "yearly"): RecurringFrequency {
+export function toRecurringFrequency(
+  frequency: "weekly" | "monthly" | "yearly",
+): RecurringFrequency {
   if (frequency === "weekly") {
     return "WEEKLY";
   }

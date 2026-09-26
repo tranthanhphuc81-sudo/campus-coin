@@ -1,6 +1,7 @@
 import { Link, Outlet } from "react-router-dom";
 
 import { useAuth } from "@/app/AuthProvider";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import ThemeControls from "@/layouts/ThemeControls";
 import { en } from "@/content/en";
 
@@ -14,6 +15,7 @@ export default function StudentLayout() {
           {en.appName}
         </Link>
         <div className="topbar-actions">
+          <NotificationBell />
           <ThemeControls />
           <button type="button" className="btn btn-outline" onClick={() => void signOut()}>
             {en.auth.home.signOutLabel}
@@ -31,8 +33,12 @@ export default function StudentLayout() {
               <li>
                 <Link to={en.routes.manageCategories}>{en.layout.studentNav.categories}</Link>
               </li>
-              <li>{en.layout.studentNav.transactions}</li>
-              <li>{en.layout.studentNav.budgets}</li>
+              <li>
+                <Link to={en.routes.transactions}>{en.layout.studentNav.transactions}</Link>
+              </li>
+              <li>
+                <Link to={en.routes.budgets}>{en.layout.studentNav.budgets}</Link>
+              </li>
               <li>{en.layout.studentNav.reports}</li>
               <li>{en.layout.studentNav.settings}</li>
             </ul>
@@ -51,12 +57,12 @@ export default function StudentLayout() {
         <Link to={en.routes.manageCategories} className="bottom-nav__item">
           {en.layout.studentNav.categories}
         </Link>
-        <button type="button" className="bottom-nav__item">
+        <Link to={en.routes.transactions} className="bottom-nav__item">
           {en.layout.studentNav.transactions}
-        </button>
-        <button type="button" className="bottom-nav__item">
+        </Link>
+        <Link to={en.routes.budgets} className="bottom-nav__item">
           {en.layout.studentNav.budgets}
-        </button>
+        </Link>
         <button type="button" className="bottom-nav__item">
           {en.layout.studentNav.reports}
         </button>

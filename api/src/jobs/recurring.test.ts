@@ -36,11 +36,15 @@ class FakeRecurringPrisma {
       void args.orderBy;
       return this.recurringRules
         .filter(
-          (rule) => rule.isActive === args.where.isActive && rule.nextRunDate <= args.where.nextRunDate.lte,
+          (rule) =>
+            rule.isActive === args.where.isActive && rule.nextRunDate <= args.where.nextRunDate.lte,
         )
         .sort((a, b) => a.nextRunDate.getTime() - b.nextRunDate.getTime() || a.id - b.id);
     },
-    update: async (args: { where: { id: number }; data: { nextRunDate: Date; isActive: boolean } }) => {
+    update: async (args: {
+      where: { id: number };
+      data: { nextRunDate: Date; isActive: boolean };
+    }) => {
       const target = this.recurringRules.find((rule) => rule.id === args.where.id);
       if (!target) {
         throw new Error("Rule not found.");
@@ -169,7 +173,11 @@ describe("runRecurringMaterialization", () => {
 
     const emittedEvents: string[] = [];
     const eventBus = {
-      emit: (_eventName: "transaction.created", payload: { recurringPeriod?: string; transactionId: string }) => {
+      emit: (
+        _eventName: "transaction.created",
+        payload: { recurringPeriod?: string; transactionId: string; type: "income" | "expense" },
+      ) => {
+        void payload.type;
         emittedEvents.push(payload.transactionId);
       },
     };
