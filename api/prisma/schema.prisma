@@ -57,6 +57,13 @@ enum NotificationType {
     SYSTEM
 }
 
+enum InsightStatus {
+    QUEUED
+    PROCESSING
+    COMPLETED
+    FAILED
+}
+
 enum TransactionHistoryAction {
     CREATE
     UPDATE
@@ -82,6 +89,7 @@ model User {
     recurringRules  RecurringRule[]
     budgets         Budget[]
     notifications   Notification[]
+    insights        Insight[]
     importBatches   ImportBatch[]
     idempotencyKeys IdempotencyKey[]
     historyEntries  TransactionHistory[]
@@ -212,6 +220,26 @@ model Budget {
     @@unique([userId, categoryId, month], map: "uq_budgets_user_category_month")
     @@index([userId, month], map: "idx_budgets_user_month")
     @@map("budgets")
+}
+
+model Insight {
+    id              BigInt        @id @default(autoincrement())
+    userId          String        @map("user_id") @db.Char(36)
+    month           DateTime      @db.Date
+    status          InsightStatus @default(QUEUED)
+    summaryText     String        @map("summary_text") @db.VarChar(600)
+    tipText         String        @map("tip_text") @db.VarChar(300)
+    statsSnapshot   Json          @map("stats_snapshot")
+    flaggedPatterns Json          @map("flagged_patterns")
+    generator       String        @default("template") @db.VarChar(20)
+    regenerateCount Int           @default(0) @map("regenerate_count")
+    createdAt       DateTime      @default(now()) @map("created_at")
+    updatedAt       DateTime      @updatedAt @map("updated_at")
+    user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([userId, month], map: "uq_insights_user_month")
+    @@index([userId, status, month], map: "idx_insights_user_status_month")
+    @@map("insights")
 }
 
 model Notification {

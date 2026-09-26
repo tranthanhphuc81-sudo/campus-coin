@@ -61,7 +61,12 @@ export type DashboardSummaryResponse = {
   categoryBreakdown: DashboardCategoryBreakdownItem[];
   trend6Months: DashboardTrendItem[];
   savingsGoalProgress: DashboardSavingsGoalProgress;
-  latestInsight: null;
+  latestInsight: {
+    month: string;
+    summaryText: string;
+    tipText: string;
+    generator: "llm" | "template";
+  } | null;
   recentActivity: [];
   activeAnnouncements: [];
   tips: [];

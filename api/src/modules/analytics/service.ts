@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 
 import { validationFailed } from "../../lib/problem.js";
+import { prisma } from "../../lib/prisma.js";
 import {
   findUserGreetingName,
   queryBudgetVsActual,
@@ -24,7 +25,9 @@ import type {
 
 const DEFAULT_TIMEZONE = "Asia/Ho_Chi_Minh";
 
-function toDecimal(value: Prisma.Decimal | string | number | bigint | null | undefined): Prisma.Decimal {
+function toDecimal(
+  value: Prisma.Decimal | string | number | bigint | null | undefined,
+): Prisma.Decimal {
   if (value instanceof Prisma.Decimal) {
     return value;
   }
@@ -185,7 +188,9 @@ function toDeltaPct(current: Prisma.Decimal, previous: Prisma.Decimal): number |
   return Number(pct.toString());
 }
 
-function mapTrendRowsToWire(rows: Array<{ month: string; income: unknown; expense: unknown }>): DashboardTrendItem[] {
+function mapTrendRowsToWire(
+  rows: Array<{ month: string; income: unknown; expense: unknown }>,
+): DashboardTrendItem[] {
   return rows.map((row) => {
     const income = toDecimal(row.income as Prisma.Decimal | string | number);
     const expense = toDecimal(row.expense as Prisma.Decimal | string | number);
@@ -230,6 +235,7 @@ export async function getDashboardSummary(params: {
     budgetRows,
     categoryRows,
     trendRows,
+    latestInsight,
   ] = await Promise.all([
     findUserGreetingName(params.userId),
     queryMonthTotals({
@@ -263,6 +269,21 @@ export async function getDashboardSummary(params: {
       startMonth: addMonths(monthStart, -5),
       months: 6,
     }),
+    prisma.insight
+      .findFirst({
+        where: {
+          userId: params.userId,
+          status: "COMPLETED",
+        },
+        orderBy: [{ month: "desc" }, { id: "desc" }],
+        select: {
+          month: true,
+          summaryText: true,
+          tipText: true,
+          generator: true,
+        },
+      })
+      .catch(() => null),
   ]);
 
   const income = toDecimal(currentTotals.income);
@@ -340,7 +361,14 @@ export async function getDashboardSummary(params: {
       progressPct: 0,
       status: "not_set",
     },
-    latestInsight: null,
+    latestInsight: latestInsight
+      ? {
+          month: toMonthString(latestInsight.month),
+          summaryText: latestInsight.summaryText,
+          tipText: latestInsight.tipText,
+          generator: latestInsight.generator === "llm" ? "llm" : "template",
+        }
+      : null,
     recentActivity: [],
     activeAnnouncements: [],
     tips: [],

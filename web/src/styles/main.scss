@@ -202,7 +202,7 @@ input,
   right: 0;
   bottom: 0;
   display: none;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   border-top: 1px solid var(--cc-border);
   background: var(--cc-surface);
 }
@@ -415,6 +415,94 @@ input,
 .reports-page {
   display: grid;
   gap: 1rem;
+}
+
+.insights-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.insights-layout {
+  display: grid;
+  grid-template-columns: 16rem 1fr;
+  gap: 1rem;
+}
+
+.insights-list {
+  padding: 1rem;
+}
+
+.insights-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.insights-list button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--cc-border);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--cc-text);
+  padding: 0.5rem 0.625rem;
+  display: grid;
+  gap: 0.125rem;
+}
+
+.insights-list button.is-active {
+  border-color: color-mix(in srgb, var(--cc-primary) 45%, var(--cc-border));
+  background: color-mix(in srgb, var(--cc-primary) 12%, transparent);
+}
+
+.insights-list small {
+  color: var(--cc-text-muted);
+}
+
+.insights-detail {
+  padding: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.insights-detail__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.insights-detail__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.insight-copy-block {
+  border: 1px solid var(--cc-border);
+  border-radius: 0.625rem;
+  padding: 0.75rem;
+}
+
+.insights-flagged-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.75rem;
+}
+
+.insight-pattern-card {
+  border: 1px solid var(--cc-border);
+  border-radius: 0.625rem;
+  padding: 0.75rem;
+  background: color-mix(in srgb, var(--cc-surface) 88%, transparent);
+}
+
+.insight-pattern-card h4 {
+  margin: 0 0 0.5rem;
+}
+
+.insight-pattern-card p {
+  margin: 0 0 0.25rem;
 }
 
 .dashboard-page__header,
@@ -759,6 +847,16 @@ input,
 
   .page-grid {
     grid-template-columns: 1fr;
+  }
+
+  .insights-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .insights-detail__header,
+  .insights-detail__actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .side-nav {

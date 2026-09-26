@@ -13,6 +13,7 @@ import ManageCategoriesPage from "@/pages/categories/ManageCategoriesPage";
 import AdminHomePage from "@/pages/home/AdminHomePage";
 import StudentHomePage from "@/pages/home/StudentHomePage";
 import ImportsPage from "@/pages/imports/ImportsPage";
+import InsightsPage from "@/pages/insights/InsightsPage";
 import ReportsPage from "@/pages/reports/ReportsPage";
 import ProfilePage from "@/pages/profile/ProfilePage";
 import TransactionsPage from "@/pages/transactions/TransactionsPage";
@@ -66,6 +67,11 @@ export const studentRoutes: AppRouteConfig[] = [
     path: en.routes.reports,
     element: <ReportsPage />,
     handle: { crumb: en.layout.studentNav.reports },
+  },
+  {
+    path: en.routes.insights,
+    element: <InsightsPage />,
+    handle: { crumb: en.layout.studentNav.insights },
   },
   {
     path: en.routes.profile,

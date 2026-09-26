@@ -1,6 +1,7 @@
 import { DoughnutChart, GroupedBarChart, LineChart } from "@/components/charts";
 import WidgetErrorBoundary from "@/components/common/WidgetErrorBoundary";
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { en } from "@/content/en";
 import { useDashboardSummary } from "@/features/analytics/hooks";
 import { formatMoney } from "@/lib/money";
@@ -207,7 +208,16 @@ export default function StudentHomePage() {
             <DashboardWidget isLoading={dashboardQuery.isLoading} error={dashboardQuery.error}>
               <section className="dashboard-widget panel">
                 <h3>{en.dashboard.widgets.latestInsight}</h3>
-                <p>{en.dashboard.latestInsightPlaceholder}</p>
+                {summary?.latestInsight ? (
+                  <>
+                    <p className="dashboard-widget__meta">{summary.latestInsight.month}</p>
+                    <p>{summary.latestInsight.summaryText}</p>
+                    <p className="dashboard-widget__meta">{en.dashboard.latestInsightAiLabel}</p>
+                    <Link to={en.routes.insights}>{en.dashboard.latestInsightViewAction}</Link>
+                  </>
+                ) : (
+                  <p>{en.dashboard.latestInsightPlaceholder}</p>
+                )}
               </section>
             </DashboardWidget>
           </WidgetErrorBoundary>

@@ -7,11 +7,19 @@ import type { AiProvider } from "./provider.js";
 
 export function createAiProvider(): AiProvider {
   if (config.AI_PROVIDER === "gemini") {
-    return new GeminiProvider(config.GEMINI_API_KEY, config.AI_CATEGORIZE_TIMEOUT_MS);
+    return new GeminiProvider(
+      config.GEMINI_API_KEY,
+      config.AI_CATEGORIZE_TIMEOUT_MS,
+      config.AI_INSIGHT_TIMEOUT_MS,
+    );
   }
 
   if (config.AI_PROVIDER === "openai") {
-    return new OpenAiProvider(config.OPENAI_API_KEY, config.AI_CATEGORIZE_TIMEOUT_MS);
+    return new OpenAiProvider(
+      config.OPENAI_API_KEY,
+      config.AI_CATEGORIZE_TIMEOUT_MS,
+      config.AI_INSIGHT_TIMEOUT_MS,
+    );
   }
 
   return new NoneProvider();

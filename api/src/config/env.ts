@@ -116,6 +116,7 @@ export const config = {
   GEMINI_API_KEY: readOptional("GEMINI_API_KEY"),
   OPENAI_API_KEY: readOptional("OPENAI_API_KEY"),
   AI_CATEGORIZE_TIMEOUT_MS: readIntWithDefault("AI_CATEGORIZE_TIMEOUT_MS", 3000),
+  AI_INSIGHT_TIMEOUT_MS: readIntWithDefault("AI_INSIGHT_TIMEOUT_MS", 15000),
   AI_DAILY_QUOTA: readIntWithDefault("AI_DAILY_QUOTA", 200),
   AI_CACHE_TTL_DAYS: readIntWithDefault("AI_CACHE_TTL_DAYS", 7),
   AI_CACHE_MAX_ENTRIES: readIntWithDefault("AI_CACHE_MAX_ENTRIES", 5000),

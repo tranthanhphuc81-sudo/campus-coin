@@ -2,6 +2,7 @@ import cron from "node-cron";
 
 import { config } from "../config/env.js";
 import { runCleanupJob } from "./cleanup.js";
+import { runInsightsGenerationJob } from "./insights.js";
 import { runRecurringMaterialization } from "./recurring.js";
 
 const JOB_TIMEZONE = "Asia/Ho_Chi_Minh";
@@ -61,16 +62,37 @@ export function startScheduler(): { stop: () => void } {
     await runCleanupJob();
   });
 
-  const recurringTask = cron.schedule("5 0 * * *", () => {
-    void recurringRunner();
-  }, { timezone: JOB_TIMEZONE });
+  const insightsRunner = createSafeRunner("insights.generate", async () => {
+    await runInsightsGenerationJob();
+  });
 
-  const cleanupTask = cron.schedule("0 3 * * *", () => {
-    void cleanupRunner();
-  }, { timezone: JOB_TIMEZONE });
+  const recurringTask = cron.schedule(
+    "5 0 * * *",
+    () => {
+      void recurringRunner();
+    },
+    { timezone: JOB_TIMEZONE },
+  );
+
+  const cleanupTask = cron.schedule(
+    "0 3 * * *",
+    () => {
+      void cleanupRunner();
+    },
+    { timezone: JOB_TIMEZONE },
+  );
+
+  const insightsTask = cron.schedule(
+    "30 0 1 * *",
+    () => {
+      void insightsRunner();
+    },
+    { timezone: JOB_TIMEZONE },
+  );
 
   recurringTask.start();
   cleanupTask.start();
+  insightsTask.start();
 
   logInfo("[scheduler] Cron scheduler started.");
 
@@ -78,6 +100,7 @@ export function startScheduler(): { stop: () => void } {
     stop: () => {
       recurringTask.stop();
       cleanupTask.stop();
+      insightsTask.stop();
       logInfo("[scheduler] Cron scheduler stopped.");
     },
   };

@@ -1,5 +1,17 @@
 import { z } from "zod";
 
+export const ABS_FLOOR_BY_CURRENCY: Record<string, number> = {
+  USD: 5,
+  VND: 100000,
+  default: 5,
+};
+
+export const CURRENCY_MINOR_DIGITS: Record<string, number> = {
+  USD: 2,
+  VND: 0,
+  default: 2,
+};
+
 export const pingSchema = z.object({
   status: z.literal("ok"),
 });

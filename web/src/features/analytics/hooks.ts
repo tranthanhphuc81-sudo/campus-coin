@@ -58,7 +58,14 @@ const dashboardSummarySchema = z.object({
     progressPct: z.number(),
     status: z.enum(["not_set", "on_track", "behind"]),
   }),
-  latestInsight: z.null(),
+  latestInsight: z
+    .object({
+      month: z.string(),
+      summaryText: z.string(),
+      tipText: z.string(),
+      generator: z.enum(["llm", "template"]),
+    })
+    .nullable(),
   recentActivity: z.array(z.unknown()),
   activeAnnouncements: z.array(z.unknown()),
   tips: z.array(z.unknown()),
