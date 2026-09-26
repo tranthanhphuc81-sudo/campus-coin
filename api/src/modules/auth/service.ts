@@ -8,10 +8,12 @@ import { config } from "../../config/env.js";
 import { AppError, conflict, tokenExpired, unauthenticated } from "../../lib/problem.js";
 import {
   adminLoginSchema,
+  appearancePreferencesSchema,
   forgotPasswordSchema,
   loginSchema,
   registerSchema,
   resetPasswordSchema,
+  updateProfileSchema,
   verifyEmailSchema,
 } from "./schema.js";
 import {
@@ -23,6 +25,7 @@ import {
   touchLastLoginAt,
   revokeRefreshTokenSession,
   updateUserAiOptIn,
+  updateUserProfile,
 } from "./repository.js";
 import type {
   AuthSessionResult,
@@ -37,6 +40,7 @@ type AdminLoginInput = z.infer<typeof adminLoginSchema>;
 type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
 const jwtSecret = new TextEncoder().encode(config.JWT_SECRET);
 
@@ -45,6 +49,8 @@ function roleToWireValue(role: User["role"]): "student" | "admin" {
 }
 
 function toPublicUser(user: UserWithAiOptIn): PublicAuthUser {
+  const preferences = appearancePreferencesSchema.safeParse(user.preferences);
+
   return {
     id: user.id,
     fullName: user.fullName,
@@ -52,6 +58,7 @@ function toPublicUser(user: UserWithAiOptIn): PublicAuthUser {
     role: roleToWireValue(user.role),
     emailVerifiedAt: user.emailVerifiedAt ? user.emailVerifiedAt.toISOString() : null,
     aiOptIn: user.aiOptIn,
+    preferences: preferences.success ? preferences.data : null,
   };
 }
 
@@ -234,6 +241,14 @@ export async function getMe(userId: string): Promise<PublicAuthUser> {
 
 export async function updateAiOptIn(userId: string, aiOptIn: boolean): Promise<PublicAuthUser> {
   const user = await updateUserAiOptIn(userId, aiOptIn);
+  return toPublicUser(user);
+}
+
+export async function updateProfile(
+  userId: string,
+  input: UpdateProfileInput,
+): Promise<PublicAuthUser> {
+  const user = await updateUserProfile(userId, input);
   return toPublicUser(user);
 }
 

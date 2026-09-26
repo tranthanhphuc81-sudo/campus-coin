@@ -1,3 +1,4 @@
+import { updateProfileInputSchema } from "@campus-coin/shared";
 import { z } from "zod";
 
 const emailSchema = z
@@ -73,7 +74,5 @@ export const resetPasswordSchema = z
       });
     }
   });
-
-export const updateProfileSchema = z.object({
-  aiOptIn: z.boolean(),
-});
+export { appearancePreferencesSchema } from "@campus-coin/shared";
+export const updateProfileSchema = updateProfileInputSchema;

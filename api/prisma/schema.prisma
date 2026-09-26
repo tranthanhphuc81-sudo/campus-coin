@@ -117,6 +117,7 @@ model User {
     role                UserRole             @default(STUDENT)
     status              UserStatus           @default(ACTIVE)
     aiOptIn             Boolean              @default(false) @map("ai_opt_in")
+    preferences          Json?
     emailVerifiedAt     DateTime?            @map("email_verified_at")
     lastLoginAt         DateTime?            @map("last_login_at")
     deletedAt           DateTime?            @map("deleted_at")

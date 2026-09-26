@@ -92,6 +92,11 @@ export const resetPasswordInputSchema = z
     }
   });
 
+export const appearancePreferencesSchema = z.object({
+  theme: z.enum(["light", "dark"]),
+  fontScale: z.union([z.literal(90), z.literal(100), z.literal(115), z.literal(130)]),
+});
+
 export const authUserSchema = z.object({
   id: z.string(),
   fullName: z.string(),
@@ -99,11 +104,15 @@ export const authUserSchema = z.object({
   role: authRoleSchema,
   emailVerifiedAt: z.string().nullable().optional(),
   aiOptIn: z.boolean(),
+  preferences: appearancePreferencesSchema.nullable().optional(),
 });
 
-export const updateProfileInputSchema = z.object({
-  aiOptIn: z.boolean(),
-});
+export const updateProfileInputSchema = z
+  .object({
+    aiOptIn: z.boolean().optional(),
+    preferences: appearancePreferencesSchema.optional(),
+  })
+  .refine((profile) => profile.aiOptIn !== undefined || profile.preferences !== undefined);
 
 export const authSessionSchema = z.object({
   accessToken: z.string().min(1),

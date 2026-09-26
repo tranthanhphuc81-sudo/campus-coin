@@ -20,6 +20,13 @@ export async function updateUserAiOptIn(id: string, aiOptIn: boolean): Promise<U
   return prisma.user.update({ where: { id }, data: { aiOptIn } });
 }
 
+export async function updateUserProfile(
+  id: string,
+  data: { aiOptIn?: boolean; preferences?: Prisma.InputJsonValue },
+): Promise<UserWithAiOptIn> {
+  return prisma.user.update({ where: { id }, data });
+}
+
 export async function createRefreshTokenSession(data: {
   id: string;
   userId: string;

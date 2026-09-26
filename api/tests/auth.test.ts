@@ -101,10 +101,19 @@ describe("Auth endpoints", () => {
     const updateProfileResponse = await request(app)
       .patch("/api/v1/me")
       .set("Authorization", `Bearer ${String(loginResponse.body.accessToken)}`)
-      .send({ aiOptIn: true });
+      .send({ aiOptIn: true, preferences: { theme: "dark", fontScale: 115 } });
 
     expect(updateProfileResponse.status).toBe(200);
-    expect(updateProfileResponse.body.aiOptIn).toBe(true);
+    expect(updateProfileResponse.body).toMatchObject({
+      aiOptIn: true,
+      preferences: { theme: "dark", fontScale: 115 },
+    });
+
+    const refreshedProfileResponse = await request(app)
+      .get("/api/v1/me")
+      .set("Authorization", `Bearer ${String(loginResponse.body.accessToken)}`);
+
+    expect(refreshedProfileResponse.body.preferences).toEqual({ theme: "dark", fontScale: 115 });
 
     const refreshResponse = await request(app).post("/api/v1/auth/refresh").set("Cookie", cookies);
 
@@ -134,7 +143,7 @@ describe("Auth endpoints", () => {
     const response = await request(app)
       .patch("/api/v1/me")
       .set("Authorization", `Bearer ${String(loginResponse.body.accessToken)}`)
-      .send({ role: "admin" });
+      .send({ preferences: { theme: "system", fontScale: 95 } });
 
     expect(response.status).toBe(422);
   });

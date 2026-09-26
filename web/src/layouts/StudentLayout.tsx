@@ -76,29 +76,14 @@ export default function StudentLayout() {
         <Link to={en.routes.home} className="bottom-nav__item">
           {en.layout.studentNav.dashboard}
         </Link>
-        <Link to={en.routes.manageCategories} className="bottom-nav__item">
-          {en.layout.studentNav.categories}
-        </Link>
         <Link to={en.routes.transactions} className="bottom-nav__item">
           {en.layout.studentNav.transactions}
-        </Link>
-        <Link to={en.routes.imports} className="bottom-nav__item">
-          {en.layout.studentNav.imports}
         </Link>
         <Link to={en.routes.budgets} className="bottom-nav__item">
           {en.layout.studentNav.budgets}
         </Link>
         <Link to={en.routes.reports} className="bottom-nav__item">
           {en.layout.studentNav.reports}
-        </Link>
-        <Link to={en.routes.insights} className="bottom-nav__item">
-          {en.layout.studentNav.insights}
-        </Link>
-        <Link to={en.routes.tips} className="bottom-nav__item">
-          {en.layout.studentNav.tips}
-        </Link>
-        <Link to={en.routes.saved} className="bottom-nav__item">
-          {en.layout.studentNav.saved}
         </Link>
         <Link to={en.routes.profile} className="bottom-nav__item">
           {en.layout.studentNav.settings}

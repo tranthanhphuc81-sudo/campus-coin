@@ -214,7 +214,7 @@ input,
   right: 0;
   bottom: 0;
   display: none;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   border-top: 1px solid var(--cc-border);
   background: var(--cc-surface);
 }
@@ -223,11 +223,15 @@ input,
   display: grid;
   place-items: center;
   min-height: 3rem;
+  min-width: 0;
+  padding: 0.25rem;
   border: 0;
   border-right: 1px solid var(--cc-border);
   background: transparent;
   color: var(--cc-text);
   text-decoration: none;
+  text-align: center;
+  font-size: 0.75rem;
 }
 
 .fab-action {

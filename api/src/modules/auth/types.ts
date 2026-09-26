@@ -26,6 +26,10 @@ export type PublicAuthUser = {
   role: AuthRole;
   emailVerifiedAt: string | null;
   aiOptIn: boolean;
+  preferences: {
+    theme: "light" | "dark";
+    fontScale: 90 | 100 | 115 | 130;
+  } | null;
 };
 
 export type RequestClientMeta = {

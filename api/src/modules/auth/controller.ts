@@ -11,7 +11,7 @@ import {
   refresh,
   register,
   resetPassword,
-  updateAiOptIn,
+  updateProfile,
   verifyEmail,
 } from "./service.js";
 
@@ -80,7 +80,7 @@ export async function patchMeHandler(req: Request, res: Response): Promise<void>
     throw unauthenticated();
   }
 
-  const me = await updateAiOptIn(userId, req.body.aiOptIn as boolean);
+  const me = await updateProfile(userId, req.body);
   res.status(200).json(me);
 }
 

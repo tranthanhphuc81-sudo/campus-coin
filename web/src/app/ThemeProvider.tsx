@@ -1,5 +1,6 @@
 import {
   createContext,
+  startTransition,
   useCallback,
   useContext,
   useEffect,
@@ -8,6 +9,7 @@ import {
   type PropsWithChildren,
 } from "react";
 
+import { useAuth } from "@/app/AuthProvider";
 import api from "@/lib/api";
 
 export type ThemeMode = "light" | "dark";
@@ -59,6 +61,7 @@ function parseScale(value: string | null): FontScale | null {
 }
 
 export function ThemeProvider({ children }: PropsWithChildren) {
+  const { status, user } = useAuth();
   const [theme, setThemeState] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") {
       return "light";
@@ -75,6 +78,21 @@ export function ThemeProvider({ children }: PropsWithChildren) {
 
     return parseScale(window.localStorage.getItem(STORAGE_FONT_SCALE_KEY)) ?? DEFAULT_FONT_SCALE;
   });
+
+  useEffect(() => {
+    const preferences = status === "authenticated" ? user?.preferences : null;
+    if (!preferences) {
+      return;
+    }
+
+    const nextFontScale = String(preferences.fontScale) as FontScale;
+    startTransition(() => {
+      setThemeState(preferences.theme);
+      setFontScaleState(nextFontScale);
+    });
+    window.localStorage.setItem(STORAGE_THEME_KEY, preferences.theme);
+    window.localStorage.setItem(STORAGE_FONT_SCALE_KEY, nextFontScale);
+  }, [status, user]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-bs-theme", theme);
