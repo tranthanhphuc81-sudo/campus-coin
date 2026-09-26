@@ -13,6 +13,7 @@ import {
   queryTrendByMonths,
   queryWeeklyIncomeExpense,
 } from "./repository.js";
+import { listTopTipsForDashboard } from "../tips/service.js";
 import type {
   CategoryBreakdownResponse,
   DailyWeeklyResponse,
@@ -236,6 +237,7 @@ export async function getDashboardSummary(params: {
     categoryRows,
     trendRows,
     latestInsight,
+    topTips,
   ] = await Promise.all([
     findUserGreetingName(params.userId),
     queryMonthTotals({
@@ -284,6 +286,7 @@ export async function getDashboardSummary(params: {
         },
       })
       .catch(() => null),
+    listTopTipsForDashboard(params.userId, 3).catch(() => []),
   ]);
 
   const income = toDecimal(currentTotals.income);
@@ -371,7 +374,7 @@ export async function getDashboardSummary(params: {
       : null,
     recentActivity: [],
     activeAnnouncements: [],
-    tips: [],
+    tips: topTips,
   };
 }
 

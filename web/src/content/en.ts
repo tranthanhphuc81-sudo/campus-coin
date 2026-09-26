@@ -24,6 +24,7 @@ export const en = {
     budgets: "/budgets",
     reports: "/reports",
     insights: "/insights",
+    tips: "/tips",
     profile: "/profile",
     adminHome: "/admin",
   },
@@ -44,6 +45,7 @@ export const en = {
       budgets: "Budgets",
       reports: "Reports",
       insights: "Insights",
+      tips: "Tips",
       settings: "Profile",
     },
   },
@@ -416,6 +418,20 @@ export const en = {
     messages: {
       regenerateAccepted: "Insight regeneration has been queued.",
       regenerateFailed: "Unable to regenerate this insight.",
+    },
+  },
+  tips: {
+    title: "Tips",
+    subtitle: "Personalized saving tips ranked by potential impact.",
+    emptyState: "No tips are available right now. Add more transactions and check again.",
+    pinnedBadge: "Pinned",
+    impactLabel: "Potential impact",
+    viewAllAction: "View all tips",
+    actions: {
+      pin: "Pin",
+      unpin: "Unpin",
+      dismiss: "Dismiss",
+      save: "Save",
     },
   },
 };

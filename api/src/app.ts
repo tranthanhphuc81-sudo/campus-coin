@@ -25,6 +25,7 @@ import { transactionsRouter } from "./modules/transactions/routes.js";
 import { aiRouter } from "./modules/ai/routes.js";
 import { importsRouter } from "./modules/imports/routes.js";
 import { insightsRouter } from "./modules/insights/routes.js";
+import { tipsRouter } from "./modules/tips/routes.js";
 import { validate } from "./middlewares/validate.js";
 
 export function createApp() {
@@ -96,6 +97,7 @@ export function createApp() {
   apiRouter.use("/reports", reportsRouter);
   apiRouter.use("/ai", aiRouter);
   apiRouter.use("/insights", insightsRouter);
+  apiRouter.use("/tips", tipsRouter);
   apiRouter.get("/me", requireAuth, meHandler);
   apiRouter.patch("/me", requireAuth, validate({ body: updateProfileSchema }), patchMeHandler);
 

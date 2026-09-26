@@ -11,7 +11,7 @@ export default function InsightsPage() {
   const [regenerateMessage, setRegenerateMessage] = useState<string | null>(null);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
-  const items = insightsQuery.data ?? [];
+  const items = useMemo(() => insightsQuery.data ?? [], [insightsQuery.data]);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
   const effectiveSelectedMonth = useMemo(() => {

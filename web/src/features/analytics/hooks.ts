@@ -68,7 +68,28 @@ const dashboardSummarySchema = z.object({
     .nullable(),
   recentActivity: z.array(z.unknown()),
   activeAnnouncements: z.array(z.unknown()),
-  tips: z.array(z.unknown()),
+  tips: z.array(
+    z.object({
+      id: z.string(),
+      ruleType: z.enum([
+        "over_budget",
+        "above_average",
+        "small_frequent",
+        "subscriptions",
+        "savings_gap",
+        "weekend_spike",
+        "general",
+      ]),
+      categoryId: z.number().nullable(),
+      title: z.string(),
+      body: z.string(),
+      impactAmount: z.string(),
+      score: z.number(),
+      status: z.enum(["active", "pinned"]),
+      createdAt: z.string(),
+      updatedAt: z.string(),
+    }),
+  ),
 });
 
 const categoryBreakdownSchema = z.object({

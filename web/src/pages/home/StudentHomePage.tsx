@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { en } from "@/content/en";
 import { useDashboardSummary } from "@/features/analytics/hooks";
+import { useDismissTip, usePinTip, useUnpinTip } from "@/features/tips/hooks";
 import { formatMoney } from "@/lib/money";
 
 function toIsoMonth(date: Date): string {
@@ -43,6 +44,69 @@ function DashboardWidget({ isLoading, error, children }: DashboardWidgetProps) {
   }
 
   return <>{children}</>;
+}
+
+type TipActionButtonsProps = {
+  tipId: string;
+  status: "active" | "pinned";
+};
+
+function TipActionButtons({ tipId, status }: TipActionButtonsProps) {
+  const pinMutation = usePinTip();
+  const unpinMutation = useUnpinTip();
+  const dismissMutation = useDismissTip();
+  const isBusy = pinMutation.isPending || unpinMutation.isPending || dismissMutation.isPending;
+
+  return (
+    <div className="dashboard-tip-actions">
+      {status === "pinned" ? (
+        <button
+          type="button"
+          className="btn btn-outline"
+          onClick={() => {
+            void unpinMutation.mutateAsync(tipId);
+          }}
+          disabled={isBusy}
+        >
+          {en.tips.actions.unpin}
+        </button>
+      ) : (
+        <>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => {
+              void pinMutation.mutateAsync(tipId);
+            }}
+            disabled={isBusy}
+          >
+            {en.tips.actions.pin}
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => {
+              void pinMutation.mutateAsync(tipId);
+            }}
+            disabled={isBusy}
+          >
+            {en.tips.actions.save}
+          </button>
+        </>
+      )}
+
+      <button
+        type="button"
+        className="btn btn-outline"
+        onClick={() => {
+          void dismissMutation.mutateAsync(tipId);
+        }}
+        disabled={isBusy}
+      >
+        {en.tips.actions.dismiss}
+      </button>
+    </div>
+  );
 }
 
 export default function StudentHomePage() {
@@ -198,6 +262,29 @@ export default function StudentHomePage() {
                 <p className="dashboard-widget__meta">
                   {Math.max(summary?.savingsGoalProgress.progressPct ?? 0, 0).toFixed(1)}%
                 </p>
+              </section>
+            </DashboardWidget>
+          </WidgetErrorBoundary>
+        </div>
+
+        <div className="col">
+          <WidgetErrorBoundary fallback={<WidgetErrorFallback />}>
+            <DashboardWidget isLoading={dashboardQuery.isLoading} error={dashboardQuery.error}>
+              <section className="dashboard-widget panel">
+                <h3>{en.layout.studentNav.tips}</h3>
+                <ul className="dashboard-tips-list">
+                  {(summary?.tips ?? []).slice(0, 3).map((tip) => (
+                    <li key={tip.id}>
+                      <p className="dashboard-widget__meta">{tip.title}</p>
+                      <p>{tip.body}</p>
+                      <p className="dashboard-widget__meta">
+                        {en.tips.impactLabel}: {formatMoney(tip.impactAmount)}
+                      </p>
+                      <TipActionButtons tipId={tip.id} status={tip.status} />
+                    </li>
+                  ))}
+                </ul>
+                <Link to={en.routes.tips}>{en.tips.viewAllAction}</Link>
               </section>
             </DashboardWidget>
           </WidgetErrorBoundary>

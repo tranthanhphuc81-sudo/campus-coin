@@ -7,7 +7,10 @@ import { prisma } from "../src/lib/prisma.js";
 const APP = createApp();
 const PASSWORD = "Password#1234";
 
-const TEST_EMAILS = ["analytics.owner@campus-coin.local", "analytics.other@campus-coin.local"] as const;
+const TEST_EMAILS = [
+  "analytics.owner@campus-coin.local",
+  "analytics.other@campus-coin.local",
+] as const;
 
 async function registerAndLogin(email: string, fullName: string) {
   await request(APP).post("/api/v1/auth/register").send({
@@ -168,6 +171,8 @@ describe("Analytics endpoints", () => {
       limitAmount: "300.00",
       spent: "123.45",
     });
+
+    expect(Array.isArray(response.body.data.tips)).toBe(true);
   });
 
   it("returns category breakdown report and compares with previous range", async () => {

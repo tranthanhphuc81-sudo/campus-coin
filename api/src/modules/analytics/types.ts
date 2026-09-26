@@ -69,7 +69,25 @@ export type DashboardSummaryResponse = {
   } | null;
   recentActivity: [];
   activeAnnouncements: [];
-  tips: [];
+  tips: Array<{
+    id: string;
+    ruleType:
+      | "over_budget"
+      | "above_average"
+      | "small_frequent"
+      | "subscriptions"
+      | "savings_gap"
+      | "weekend_spike"
+      | "general";
+    categoryId: number | null;
+    title: string;
+    body: string;
+    impactAmount: string;
+    score: number;
+    status: "active" | "pinned";
+    createdAt: string;
+    updatedAt: string;
+  }>;
 };
 
 export type CategoryBreakdownItem = {
