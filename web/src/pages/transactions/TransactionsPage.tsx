@@ -6,8 +6,9 @@ import {
   type TransactionType,
 } from "@campus-coin/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useSearchParams } from "react-router-dom";
 
 import { en } from "@/content/en";
 import { useCategories } from "@/features/categories/hooks";
@@ -56,13 +57,15 @@ function sourceLabel(source: Transaction["source"]): string {
 }
 
 export default function TransactionsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeType, setActiveType] = useState<TransactionType>("expense");
   const [month, setMonth] = useState(() => toMonthInput(new Date()));
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
+  const autoOpenCreateHandled = useRef(false);
 
-  const categoriesType = activeType as CategoryType;
-  const categoriesQuery = useCategories(categoriesType);
+  const expenseCategoriesQuery = useCategories("expense" as CategoryType);
+  const incomeCategoriesQuery = useCategories("income" as CategoryType);
   const transactionsQuery = useTransactions({
     month,
     type: activeType,
@@ -72,8 +75,19 @@ export default function TransactionsPage() {
   const updateMutation = useUpdateTransaction();
   const deleteMutation = useDeleteTransaction();
 
-  const categories = categoriesQuery.data ?? [];
-  const transactions = transactionsQuery.data ?? [];
+  const expenseCategories = useMemo(
+    () => expenseCategoriesQuery.data ?? [],
+    [expenseCategoriesQuery.data],
+  );
+  const incomeCategories = useMemo(
+    () => incomeCategoriesQuery.data ?? [],
+    [incomeCategoriesQuery.data],
+  );
+  const categories = useMemo(
+    () => (activeType === "expense" ? expenseCategories : incomeCategories),
+    [activeType, expenseCategories, incomeCategories],
+  );
+  const transactions = useMemo(() => transactionsQuery.data ?? [], [transactionsQuery.data]);
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(
@@ -93,7 +107,7 @@ export default function TransactionsPage() {
 
   const canOpenCreate = useMemo(() => categories.length > 0, [categories.length]);
 
-  const openCreateDialog = () => {
+  const openCreateDialog = useCallback(() => {
     const firstCategory = categories[0];
     if (!firstCategory) {
       return;
@@ -118,6 +132,59 @@ export default function TransactionsPage() {
       txnDate: toDateInput(new Date()),
       description: "",
     });
+  }, [activeType, categories, form]);
+
+  useEffect(() => {
+    const shouldOpenCreate = searchParams.get("new") === "1";
+    if (!shouldOpenCreate) {
+      autoOpenCreateHandled.current = false;
+      return;
+    }
+
+    if (autoOpenCreateHandled.current || !canOpenCreate) {
+      return;
+    }
+
+    autoOpenCreateHandled.current = true;
+    openCreateDialog();
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("new");
+    setSearchParams(nextParams, { replace: true });
+  }, [canOpenCreate, openCreateDialog, searchParams, setSearchParams]);
+
+  const handleAddClick = () => {
+    setFlashMessage(null);
+
+    if (canOpenCreate) {
+      openCreateDialog();
+      return;
+    }
+
+    const fallbackType: TransactionType | null =
+      activeType === "expense"
+        ? incomeCategories.length > 0
+          ? "income"
+          : null
+        : expenseCategories.length > 0
+          ? "expense"
+          : null;
+
+    if (fallbackType) {
+      setActiveType(fallbackType);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set("new", "1");
+      setSearchParams(nextParams, { replace: true });
+      setFlashMessage(
+        en.transactions.messages.switchedTypeToCreate.replace(
+          "{type}",
+          fallbackType === "expense" ? en.categories.expenseTab : en.categories.incomeTab,
+        ),
+      );
+      return;
+    }
+
+    setFlashMessage(en.transactions.messages.missingCategory);
   };
 
   const openEditDialog = (transaction: Transaction) => {
@@ -202,8 +269,7 @@ export default function TransactionsPage() {
           <button
             type="button"
             className="btn btn-primary"
-            disabled={!canOpenCreate}
-            onClick={openCreateDialog}
+            onClick={handleAddClick}
           >
             {en.transactions.addAction}
           </button>
