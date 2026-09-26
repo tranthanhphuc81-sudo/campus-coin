@@ -14,22 +14,15 @@ export default function InsightsPage() {
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
   const items = useMemo(() => insightsQuery.data ?? [], [insightsQuery.data]);
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(searchParams.get("month"));
+  const selectedMonthFromQuery = searchParams.get("month");
 
   const effectiveSelectedMonth = useMemo(() => {
-    if (selectedMonth && items.some((item) => item.month === selectedMonth)) {
-      return selectedMonth;
+    if (selectedMonthFromQuery && items.some((item) => item.month === selectedMonthFromQuery)) {
+      return selectedMonthFromQuery;
     }
 
     return items[0]?.month ?? null;
-  }, [items, selectedMonth]);
-
-  useEffect(() => {
-    const monthFromQuery = searchParams.get("month");
-    if (monthFromQuery && monthFromQuery !== selectedMonth) {
-      setSelectedMonth(monthFromQuery);
-    }
-  }, [searchParams, selectedMonth]);
+  }, [items, selectedMonthFromQuery]);
 
   useEffect(() => {
     if (!effectiveSelectedMonth) {
@@ -87,7 +80,6 @@ export default function InsightsPage() {
                   type="button"
                   className={item.month === effectiveSelectedMonth ? "is-active" : ""}
                   onClick={() => {
-                    setSelectedMonth(item.month);
                     const nextParams = new URLSearchParams(searchParams);
                     nextParams.set("month", item.month);
                     setSearchParams(nextParams, { replace: true });

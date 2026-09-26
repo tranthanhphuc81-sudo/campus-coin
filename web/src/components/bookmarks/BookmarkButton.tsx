@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 
 import { en } from "@/content/en";
 import {
@@ -30,13 +30,6 @@ export default function BookmarkButton({ targetType, targetRef, ariaLabel }: Boo
     () => bookmarkQuery.data?.items[0] ?? null,
     [bookmarkQuery.data],
   );
-
-  useEffect(() => {
-    if (isDialogOpen) {
-      setNote(existingBookmark?.note ?? "");
-      setErrorMessage(null);
-    }
-  }, [existingBookmark?.note, isDialogOpen]);
 
   const isBusy =
     createMutation.isPending ||
@@ -87,7 +80,11 @@ export default function BookmarkButton({ targetType, targetRef, ariaLabel }: Boo
         className="btn btn-outline"
         aria-label={ariaLabel ?? en.bookmarks.actions.openDialog}
         aria-pressed={Boolean(existingBookmark)}
-        onClick={() => setIsDialogOpen(true)}
+        onClick={() => {
+          setNote(existingBookmark?.note ?? "");
+          setErrorMessage(null);
+          setIsDialogOpen(true);
+        }}
       >
         {existingBookmark ? en.bookmarks.actions.bookmarked : en.bookmarks.actions.bookmark}
       </button>

@@ -30,6 +30,7 @@ import { tipsRouter } from "./modules/tips/routes.js";
 import { forecastRouter } from "./modules/forecast/routes.js";
 import { activityRouter } from "./modules/activity/routes.js";
 import { bookmarksRouter } from "./modules/bookmarks/routes.js";
+import { adminRouter, announcementsRouter } from "./modules/admin/routes.js";
 import { validate } from "./middlewares/validate.js";
 
 export function createApp() {
@@ -106,6 +107,8 @@ export function createApp() {
   apiRouter.use("/insights", insightsRouter);
   apiRouter.use("/tips", tipsRouter);
   apiRouter.use("/bookmarks", bookmarksRouter);
+  apiRouter.use("/announcements", announcementsRouter);
+  apiRouter.use("/admin", adminRouter);
   apiRouter.get("/me", requireAuth, meHandler);
   apiRouter.patch("/me", requireAuth, validate({ body: updateProfileSchema }), patchMeHandler);
 

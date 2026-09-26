@@ -8,7 +8,7 @@ export default function AdminLayout() {
   const { signOut } = useAuth();
 
   return (
-    <div className="layout-shell">
+    <div className="layout-shell student-layout">
       <header className="topbar">
         <Link to={en.routes.adminHome} className="brand-link">
           {en.appName} Admin
@@ -21,9 +21,36 @@ export default function AdminLayout() {
         </div>
       </header>
 
-      <main id="main-content" className="main-content">
-        <Outlet />
-      </main>
+      <div className="page-grid">
+        <aside className="side-nav" aria-label={en.layout.adminSideNavAriaLabel}>
+          <nav>
+            <ul>
+              <li>
+                <Link to={en.routes.adminHome}>{en.layout.adminNav.dashboard}</Link>
+              </li>
+              <li>
+                <Link to={en.routes.adminUsers}>{en.layout.adminNav.users}</Link>
+              </li>
+              <li>
+                <Link to={en.routes.adminDefaultCategories}>{en.layout.adminNav.categories}</Link>
+              </li>
+              <li>
+                <Link to={en.routes.adminTipTemplates}>{en.layout.adminNav.tipTemplates}</Link>
+              </li>
+              <li>
+                <Link to={en.routes.adminAnnouncements}>{en.layout.adminNav.announcements}</Link>
+              </li>
+              <li>
+                <Link to={en.routes.adminAuditLogs}>{en.layout.adminNav.auditLogs}</Link>
+              </li>
+            </ul>
+          </nav>
+        </aside>
+
+        <main id="main-content" className="main-content">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

@@ -2,7 +2,8 @@ import type { NextFunction, Request, Response } from "express";
 import { jwtVerify } from "jose";
 
 import { config } from "../config/env.js";
-import { tokenExpired, unauthenticated } from "../lib/problem.js";
+import { prisma } from "../lib/prisma.js";
+import { forbidden, tokenExpired, unauthenticated } from "../lib/problem.js";
 
 const jwtSecret = new TextEncoder().encode(config.JWT_SECRET);
 
@@ -38,13 +39,44 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       return;
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: parsed.sub },
+      select: {
+        id: true,
+        role: true,
+        status: true,
+        deletedAt: true,
+      },
+    });
+
+    if (!user || user.deletedAt || user.status !== "ACTIVE") {
+      next(unauthenticated("Your account is disabled or unavailable."));
+      return;
+    }
+
     req.user = {
-      id: parsed.sub,
-      role: parsed.role,
+      id: user.id,
+      role: user.role === "ADMIN" ? "admin" : "student",
     };
 
     next();
   } catch {
     next(tokenExpired());
   }
+}
+
+export function requireRole(role: "student" | "admin") {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      next(unauthenticated());
+      return;
+    }
+
+    if (req.user.role !== role) {
+      next(forbidden());
+      return;
+    }
+
+    next();
+  };
 }

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Suspense, lazy, type ReactNode } from "react";
 import { matchPath } from "react-router-dom";
 
 import { en } from "@/content/en";
@@ -10,7 +10,6 @@ import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "@/pages/auth/VerifyEmailPage";
 import BudgetsPage from "@/pages/budgets/BudgetsPage";
 import ManageCategoriesPage from "@/pages/categories/ManageCategoriesPage";
-import AdminHomePage from "@/pages/home/AdminHomePage";
 import StudentHomePage from "@/pages/home/StudentHomePage";
 import ImportsPage from "@/pages/imports/ImportsPage";
 import InsightsPage from "@/pages/insights/InsightsPage";
@@ -19,6 +18,17 @@ import SavedPage from "@/pages/saved/SavedPage";
 import ReportsPage from "@/pages/reports/ReportsPage";
 import ProfilePage from "@/pages/profile/ProfilePage";
 import TransactionsPage from "@/pages/transactions/TransactionsPage";
+
+const AdminDashboardPage = lazy(() => import("@/pages/admin/AdminDashboardPage"));
+const AdminUsersPage = lazy(() => import("@/pages/admin/AdminUsersPage"));
+const AdminCategoriesPage = lazy(() => import("@/pages/admin/AdminCategoriesPage"));
+const AdminTipsPage = lazy(() => import("@/pages/admin/AdminTipsPage"));
+const AdminAnnouncementsPage = lazy(() => import("@/pages/admin/AdminAnnouncementsPage"));
+const AdminAuditLogsPage = lazy(() => import("@/pages/admin/AdminAuditLogsPage"));
+
+function lazyRoute(element: ReactNode): ReactNode {
+  return <Suspense fallback={<p>{en.common.loadingLabel}</p>}>{element}</Suspense>;
+}
 
 export type AppRouteHandle = {
   crumb?: string;
@@ -93,7 +103,12 @@ export const studentRoutes: AppRouteConfig[] = [
 ];
 
 export const adminRoutes: AppRouteConfig[] = [
-  { path: en.routes.adminHome, element: <AdminHomePage /> },
+  { path: en.routes.adminHome, element: lazyRoute(<AdminDashboardPage />) },
+  { path: en.routes.adminUsers, element: lazyRoute(<AdminUsersPage />) },
+  { path: en.routes.adminDefaultCategories, element: lazyRoute(<AdminCategoriesPage />) },
+  { path: en.routes.adminTipTemplates, element: lazyRoute(<AdminTipsPage />) },
+  { path: en.routes.adminAnnouncements, element: lazyRoute(<AdminAnnouncementsPage />) },
+  { path: en.routes.adminAuditLogs, element: lazyRoute(<AdminAuditLogsPage />) },
 ];
 
 export type BreadcrumbItem = {

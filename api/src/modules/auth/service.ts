@@ -20,6 +20,7 @@ import {
   findRefreshTokenSession,
   findUserByEmail,
   findUserById,
+  touchLastLoginAt,
   revokeRefreshTokenSession,
   updateUserAiOptIn,
 } from "./repository.js";
@@ -140,6 +141,12 @@ export async function login(
     throw unauthenticated("Invalid email or password.");
   }
 
+  if (user.deletedAt || user.status !== "ACTIVE") {
+    throw unauthenticated("Your account is disabled or unavailable.");
+  }
+
+  await touchLastLoginAt(user.id);
+
   return issueSession(user, clientMeta);
 }
 
@@ -184,9 +191,11 @@ export async function refresh(
     }
 
     const user = await findUserById(userId);
-    if (!user) {
+    if (!user || user.deletedAt || user.status !== "ACTIVE") {
       throw unauthenticated();
     }
+
+    await touchLastLoginAt(user.id);
 
     return issueSession(user, clientMeta);
   } catch (error) {

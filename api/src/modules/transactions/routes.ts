@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { requireAuth } from "../../middlewares/auth.js";
+import { requireAuth, requireRole } from "../../middlewares/auth.js";
 import { validate } from "../../middlewares/validate.js";
 import {
   createTransactionHandler,
@@ -20,6 +20,7 @@ import {
 export const transactionsRouter = Router();
 
 transactionsRouter.use(requireAuth);
+transactionsRouter.use(requireRole("student"));
 transactionsRouter.get(
   "/",
   validate({ query: listTransactionsQuerySchema }),
