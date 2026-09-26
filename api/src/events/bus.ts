@@ -8,6 +8,9 @@ export type TransactionCreatedEvent = {
   amount: string;
   txnDate: string;
   source: "recurring" | "manual" | "csv_import";
+  description?: string | null;
+  categorySource?: "user" | "ai_accepted" | "ai_overridden";
+  aiSuggestedCategoryId?: number | null;
 };
 
 type TransactionSnapshotEvent = {

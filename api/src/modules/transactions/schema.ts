@@ -22,6 +22,8 @@ export const createTransactionBodySchema = z.object({
     .regex(amountRegex, "amount must be a decimal string with up to 2 decimals."),
   description: z.string().trim().max(255).optional(),
   txnDate: z.string().regex(dateRegex, "txnDate must use YYYY-MM-DD format."),
+  categorySource: z.enum(["user", "ai_accepted", "ai_overridden"]).optional(),
+  aiSuggestedCategoryId: z.number().int().positive().nullable().optional(),
 });
 
 export const updateTransactionBodySchema = z
@@ -35,6 +37,8 @@ export const updateTransactionBodySchema = z
       .optional(),
     description: z.string().trim().max(255).nullable().optional(),
     txnDate: z.string().regex(dateRegex, "txnDate must use YYYY-MM-DD format.").optional(),
+    categorySource: z.enum(["user", "ai_accepted", "ai_overridden"]).optional(),
+    aiSuggestedCategoryId: z.number().int().positive().nullable().optional(),
   })
   .refine((payload) => Object.keys(payload).length > 0, {
     message: "At least one field is required.",

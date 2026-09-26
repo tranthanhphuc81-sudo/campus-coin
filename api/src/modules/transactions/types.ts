@@ -28,6 +28,8 @@ export type CreateTransactionInput = {
   amount: string;
   description?: string;
   txnDate: string;
+  categorySource?: "user" | "ai_accepted" | "ai_overridden";
+  aiSuggestedCategoryId?: number | null;
 };
 
 export type UpdateTransactionInput = {
@@ -36,4 +38,6 @@ export type UpdateTransactionInput = {
   amount?: string;
   description?: string | null;
   txnDate?: string;
+  categorySource?: "user" | "ai_accepted" | "ai_overridden";
+  aiSuggestedCategoryId?: number | null;
 };

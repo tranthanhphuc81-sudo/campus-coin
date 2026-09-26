@@ -75,6 +75,15 @@ function readOptionalPort(key: string): number | undefined {
   return Math.trunc(parsed);
 }
 
+function readAiProvider(): "gemini" | "openai" | "none" {
+  const raw = (process.env.AI_PROVIDER ?? "none").trim().toLowerCase();
+  if (raw === "gemini" || raw === "openai" || raw === "none") {
+    return raw;
+  }
+
+  throw new Error("Invalid AI_PROVIDER. Expected gemini, openai, or none.");
+}
+
 function readJwtSecret(): string {
   const fromEnv = process.env.JWT_SECRET;
   if (fromEnv && fromEnv.trim().length >= 16) {
@@ -103,4 +112,11 @@ export const config = {
   SMTP_USER: readOptional("SMTP_USER"),
   SMTP_PASS: readOptional("SMTP_PASS"),
   MAIL_FROM: readOptional("MAIL_FROM") ?? "Campus Coin <no-reply@campus-coin.dev>",
+  AI_PROVIDER: readAiProvider(),
+  GEMINI_API_KEY: readOptional("GEMINI_API_KEY"),
+  OPENAI_API_KEY: readOptional("OPENAI_API_KEY"),
+  AI_CATEGORIZE_TIMEOUT_MS: readIntWithDefault("AI_CATEGORIZE_TIMEOUT_MS", 3000),
+  AI_DAILY_QUOTA: readIntWithDefault("AI_DAILY_QUOTA", 200),
+  AI_CACHE_TTL_DAYS: readIntWithDefault("AI_CACHE_TTL_DAYS", 7),
+  AI_CACHE_MAX_ENTRIES: readIntWithDefault("AI_CACHE_MAX_ENTRIES", 5000),
 } as const;

@@ -205,6 +205,9 @@ export async function addTransaction(
     amount: formatAmount(withCategory.amount),
     txnDate: toDateOnlyString(withCategory.txnDate),
     source: toWireSource(withCategory.source),
+    description: withCategory.description,
+    categorySource: payload.categorySource ?? "user",
+    aiSuggestedCategoryId: payload.aiSuggestedCategoryId ?? null,
   });
 
   return mapTransactionToDto(withCategory);
