@@ -10,6 +10,7 @@ import App from "@/App";
 
 import "@fontsource/inter/latin.css";
 import "@fontsource/inter/vietnamese.css";
+import "bootstrap/dist/css/bootstrap.min.css";
 import "@/styles/main.scss";
 
 const root = document.getElementById("root");

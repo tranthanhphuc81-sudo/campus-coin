@@ -1,12 +1,17 @@
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
+import { getStudentBreadcrumbs } from "@/app/routes";
 import { useAuth } from "@/app/AuthProvider";
+import Breadcrumbs from "@/components/common/Breadcrumbs";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import ThemeControls from "@/layouts/ThemeControls";
 import { en } from "@/content/en";
 
 export default function StudentLayout() {
   const { signOut } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const breadcrumbs = getStudentBreadcrumbs(location.pathname);
 
   return (
     <div className="layout-shell student-layout">
@@ -39,13 +44,16 @@ export default function StudentLayout() {
               <li>
                 <Link to={en.routes.budgets}>{en.layout.studentNav.budgets}</Link>
               </li>
-              <li>{en.layout.studentNav.reports}</li>
+              <li>
+                <Link to={en.routes.reports}>{en.layout.studentNav.reports}</Link>
+              </li>
               <li>{en.layout.studentNav.settings}</li>
             </ul>
           </nav>
         </aside>
 
         <main id="main-content" className="main-content">
+          <Breadcrumbs items={breadcrumbs} ariaLabel={en.layout.breadcrumbAriaLabel} />
           <Outlet />
         </main>
       </div>
@@ -63,15 +71,27 @@ export default function StudentLayout() {
         <Link to={en.routes.budgets} className="bottom-nav__item">
           {en.layout.studentNav.budgets}
         </Link>
-        <button type="button" className="bottom-nav__item">
+        <Link to={en.routes.reports} className="bottom-nav__item">
           {en.layout.studentNav.reports}
-        </button>
+        </Link>
         <button type="button" className="bottom-nav__item">
           {en.layout.studentNav.settings}
         </button>
       </nav>
 
-      <button type="button" className="fab-action" aria-label={en.layout.quickAddAriaLabel}>
+      <button
+        type="button"
+        className="fab-action"
+        aria-label={en.layout.quickAddAriaLabel}
+        onClick={() => {
+          if (location.pathname === en.routes.transactions) {
+            navigate(`${en.routes.transactions}?new=1`, { replace: true });
+            return;
+          }
+
+          navigate(`${en.routes.transactions}?new=1`);
+        }}
+      >
         +
       </button>
     </div>
