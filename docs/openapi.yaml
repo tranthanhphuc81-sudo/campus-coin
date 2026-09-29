@@ -1,0 +1,5387 @@
+openapi: 3.1.0
+info:
+  title: CampusCoin API
+  version: 0.1.0
+  description: CampusCoin ("Smart Spending, Student Style") REST API. Money amounts are decimal strings (never floats); errors follow RFC 9457 `application/problem+json`; every route scoped to the caller's own data returns 404 (not 403) for another user's resource.
+servers:
+  - url: /api/v1
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Short-lived access token (EdDSA JWT) from `POST /auth/login`, sent as `Authorization: Bearer <token>`."
+  schemas:
+    adminAuditLogQuerySchema:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        action:
+          type: string
+          minLength: 1
+          maxLength: 80
+        actorId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      additionalProperties: false
+    adminLoginSchema:
+      type: object
+      properties:
+        email:
+          type: string
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+        - email
+        - password
+      additionalProperties: false
+    aiFeedbackSchema:
+      type: object
+      properties:
+        transactionId:
+          type: string
+          format: uuid
+        merchantKey:
+          type: string
+          minLength: 1
+          maxLength: 255
+        suggestedCategoryId:
+          type:
+            - integer
+            - "null"
+          exclusiveMinimum: 0
+        chosenCategoryId:
+          type: integer
+          exclusiveMinimum: 0
+      required:
+        - merchantKey
+        - suggestedCategoryId
+        - chosenCategoryId
+      additionalProperties: false
+    bookmarkIdParamSchema:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^\d{1,10}$
+      required:
+        - id
+      additionalProperties: false
+    budgetMonthSchema:
+      type: string
+      pattern: ^(\d{4})-(\d{2})-(\d{2})$
+    budgetUpsertItemSchema:
+      type: object
+      properties:
+        categoryId:
+          type: integer
+          exclusiveMinimum: 0
+        limitAmount:
+          type: string
+          pattern: ^\d{1,12}(\.\d{1,2})?$
+        alertThresholdPct:
+          type: integer
+          minimum: 50
+          maximum: 100
+          default: 80
+      required:
+        - categoryId
+        - limitAmount
+      additionalProperties: false
+    categorizeSuggestSchema:
+      type: object
+      properties:
+        description:
+          type: string
+          minLength: 2
+          maxLength: 255
+        type:
+          type: string
+          enum:
+            - income
+            - expense
+      required:
+        - description
+        - type
+      additionalProperties: false
+    categoryNameSchema:
+      type: string
+      minLength: 1
+    changePasswordSchema:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 128
+        newPassword:
+          type: string
+          minLength: 10
+          maxLength: 128
+      required:
+        - currentPassword
+        - newPassword
+      additionalProperties: false
+    copyPreviousBudgetsSchema:
+      type: object
+      properties:
+        month:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+      required:
+        - month
+      additionalProperties: false
+    createAnnouncementSchema:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 150
+        body:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        level:
+          type: string
+          enum:
+            - info
+            - warning
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+      required:
+        - title
+        - body
+        - level
+        - startsAt
+      additionalProperties: false
+    createBookmarkSchema:
+      oneOf:
+        - type: object
+          properties:
+            targetType:
+              type: string
+              enum:
+                - tip
+            targetRef:
+              type: string
+              pattern: ^\d{1,20}$
+            note:
+              type:
+                - string
+                - "null"
+              maxLength: 500
+          required:
+            - targetType
+            - targetRef
+          additionalProperties: false
+        - type: object
+          properties:
+            targetType:
+              type: string
+              enum:
+                - insight
+            targetRef:
+              type: string
+              pattern: ^(\d{4})-(\d{2})-(\d{2})$
+            note:
+              type:
+                - string
+                - "null"
+              maxLength: 500
+          required:
+            - targetType
+            - targetRef
+          additionalProperties: false
+        - type: object
+          properties:
+            targetType:
+              type: string
+              enum:
+                - report
+            targetRef:
+              type: string
+              maxLength: 255
+              pattern: ^(overview|by-period|by-category|forecast)(\?[A-Za-z0-9=&,-]+)?$
+            note:
+              type:
+                - string
+                - "null"
+              maxLength: 500
+          required:
+            - targetType
+            - targetRef
+          additionalProperties: false
+    createCategorySchema:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - income
+            - expense
+        icon:
+          type: string
+          pattern: ^[a-z0-9-]{1,40}$
+        color:
+          type: string
+          pattern: ^#[0-9A-Fa-f]{6}$
+      required:
+        - name
+        - type
+      additionalProperties: false
+    createRecurringRuleSchema:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - income
+            - expense
+        categoryId:
+          type: integer
+          exclusiveMinimum: 0
+        amount:
+          type: string
+          pattern: ^\d{1,12}(\.\d{1,2})?$
+        description:
+          type:
+            - string
+            - "null"
+          maxLength: 255
+        frequency:
+          type: string
+          enum:
+            - weekly
+            - monthly
+            - yearly
+        intervalCount:
+          type: integer
+          minimum: 1
+          maximum: 12
+          default: 1
+        dayOfMonth:
+          type:
+            - integer
+            - "null"
+          minimum: 1
+          maximum: 31
+        dayOfWeek:
+          type:
+            - integer
+            - "null"
+          minimum: 1
+          maximum: 7
+        startDate:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+        endDate:
+          type:
+            - string
+            - "null"
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+      required:
+        - type
+        - categoryId
+        - amount
+        - frequency
+        - startDate
+      additionalProperties: false
+    createTipTemplateSchema:
+      type: object
+      properties:
+        code:
+          type: string
+          pattern: ^[A-Z0-9_]{1,40}$
+        ruleType:
+          type: string
+          enum:
+            - over_budget
+            - above_average
+            - small_frequent
+            - subscriptions
+            - savings_gap
+            - weekend_spike
+            - general
+        titleTpl:
+          type: string
+          minLength: 1
+          maxLength: 150
+        bodyTpl:
+          type: string
+          minLength: 1
+          maxLength: 500
+        isActive:
+          type: boolean
+          default: true
+      required:
+        - code
+        - ruleType
+        - titleTpl
+        - bodyTpl
+      additionalProperties: false
+    createTransactionSchema:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - income
+            - expense
+        categoryId:
+          type: integer
+          exclusiveMinimum: 0
+        amount:
+          type: string
+          pattern: ^\d{1,12}(\.\d{1,2})?$
+        txnDate:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+        description:
+          type:
+            - string
+            - "null"
+          maxLength: 255
+        aiSuggestedCategoryId:
+          type:
+            - integer
+            - "null"
+          exclusiveMinimum: 0
+        aiConfidence:
+          type:
+            - string
+            - "null"
+          pattern: ^(0(\.\d{1,3})?|1(\.0{1,3})?)$
+        recurring:
+          type: object
+          properties:
+            frequency:
+              type: string
+              enum:
+                - weekly
+                - monthly
+                - yearly
+            intervalCount:
+              type: integer
+              minimum: 1
+              maximum: 12
+              default: 1
+            endDate:
+              type:
+                - string
+                - "null"
+              pattern: ^(\d{4})-(\d{2})-(\d{2})$
+          required:
+            - frequency
+          additionalProperties: false
+      required:
+        - type
+        - categoryId
+        - amount
+        - txnDate
+      additionalProperties: false
+    dashboardSummaryQuerySchema:
+      type: object
+      properties:
+        month:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+      additionalProperties: false
+    deleteAccountSchema:
+      type: object
+      properties:
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+        confirm:
+          type: string
+          enum:
+            - DELETE
+      required:
+        - password
+        - confirm
+      additionalProperties: false
+    deleteCategoryQuerySchema:
+      type: object
+      properties:
+        reassignTo:
+          type: string
+          pattern: ^\d{1,10}$
+        archive:
+          type: string
+          enum:
+            - "true"
+            - "false"
+      additionalProperties: false
+    emailOnlySchema:
+      type: object
+      properties:
+        email:
+          type: string
+          maxLength: 254
+      required:
+        - email
+      additionalProperties: false
+    emailSchema:
+      type: string
+      maxLength: 254
+    exportQuerySchema:
+      type: object
+      properties:
+        format:
+          type: string
+          enum:
+            - json
+            - csv
+          default: json
+      additionalProperties: false
+    forecastQuerySchema:
+      type: object
+      properties: {}
+      additionalProperties: false
+    importBatchQuerySchema:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        filter:
+          type: string
+          enum:
+            - all
+            - errors
+            - duplicates
+            - needs_review
+          default: all
+      additionalProperties: false
+    importColumnMappingSchema:
+      type: object
+      properties:
+        date:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 49
+        amount:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 49
+        type:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 49
+        description:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 49
+        category:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 49
+      required:
+        - date
+        - amount
+        - type
+        - description
+        - category
+      additionalProperties: false
+    insightMonthParamSchema:
+      type: object
+      properties:
+        month:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+      required:
+        - month
+      additionalProperties: false
+    intIdParamSchema:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^\d{1,10}$
+      required:
+        - id
+      additionalProperties: false
+    listAdminUsersQuerySchema:
+      type: object
+      properties:
+        q:
+          type: string
+          minLength: 1
+          maxLength: 254
+        status:
+          type: string
+          enum:
+            - pending
+            - active
+            - disabled
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      additionalProperties: false
+    listBookmarksQuerySchema:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - tip
+            - insight
+            - report
+        q:
+          type: string
+          minLength: 1
+          maxLength: 100
+        page:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      additionalProperties: false
+    listBudgetsQuerySchema:
+      type: object
+      properties:
+        month:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+      additionalProperties: false
+    listCategoriesQuerySchema:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - income
+            - expense
+        includeInactive:
+          type: string
+          enum:
+            - "true"
+            - "false"
+      additionalProperties: false
+    listInsightsQuerySchema:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      additionalProperties: false
+    listNotificationsQuerySchema:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        unreadOnly:
+          type: string
+          enum:
+            - "true"
+            - "false"
+          default: "false"
+      additionalProperties: false
+    listTransactionsQuerySchema:
+      type: object
+      properties:
+        from:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+        to:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+        type:
+          type: string
+          enum:
+            - income
+            - expense
+        categoryId:
+          type: string
+          pattern: ^\d{1,10}(,\d{1,10}){0,19}$
+        q:
+          type: string
+          minLength: 1
+          maxLength: 100
+        minAmount:
+          type: string
+          pattern: ^\d{1,12}(\.\d{1,2})?$
+        maxAmount:
+          type: string
+          pattern: ^\d{1,12}(\.\d{1,2})?$
+        sort:
+          type: string
+          enum:
+            - txnDate
+            - -txnDate
+            - amount
+            - -amount
+            - createdAt
+            - -createdAt
+          default: -txnDate
+        page:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        deleted:
+          type: string
+          enum:
+            - "true"
+            - "false"
+          default: "false"
+      additionalProperties: false
+    localDateSchema:
+      type: string
+      pattern: ^(\d{4})-(\d{2})-(\d{2})$
+    loginSchema:
+      type: object
+      properties:
+        email:
+          type: string
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+        rememberMe:
+          type: boolean
+          default: false
+      required:
+        - email
+        - password
+      additionalProperties: false
+    mfaTokenSchema:
+      type: string
+      maxLength: 2000
+      pattern: ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$
+    mfaVerifySchema:
+      type: object
+      properties:
+        mfaToken:
+          type: string
+          maxLength: 2000
+          pattern: ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$
+        code:
+          type: string
+          pattern: ^\d{6}$
+        recoveryCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+      required:
+        - mfaToken
+      additionalProperties: false
+    moneyFilterSchema:
+      type: string
+      pattern: ^\d{1,12}(\.\d{1,2})?$
+    moneyStringSchema:
+      type: string
+      pattern: ^\d{1,12}(\.\d{1,2})?$
+    noHtmlSchema:
+      type: string
+    passwordSchema:
+      type: string
+      minLength: 10
+      maxLength: 128
+    previewTipTemplateSchema:
+      type: object
+      properties:
+        titleTpl:
+          type: string
+          minLength: 1
+          maxLength: 150
+        bodyTpl:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required:
+        - titleTpl
+        - bodyTpl
+      additionalProperties: false
+    recentActivityQuerySchema:
+      type: object
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 10
+      additionalProperties: false
+    recurringInlineSchema:
+      type: object
+      properties:
+        frequency:
+          type: string
+          enum:
+            - weekly
+            - monthly
+            - yearly
+        intervalCount:
+          type: integer
+          minimum: 1
+          maximum: 12
+          default: 1
+        endDate:
+          type:
+            - string
+            - "null"
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+      required:
+        - frequency
+      additionalProperties: false
+    registerSchema:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 100
+        email:
+          type: string
+          maxLength: 254
+        password:
+          type: string
+          minLength: 10
+          maxLength: 128
+      required:
+        - fullName
+        - email
+        - password
+      additionalProperties: false
+    reportCategoryBreakdownQuerySchema:
+      type: object
+      properties:
+        from:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+        to:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+        type:
+          type: string
+          enum:
+            - income
+            - expense
+        categoryId:
+          type: string
+          pattern: ^\d{1,10}(,\d{1,10}){0,19}$
+      required:
+        - from
+        - to
+      additionalProperties: false
+    reportDailyWeeklyQuerySchema:
+      type: object
+      properties:
+        month:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+      additionalProperties: false
+    reportIncomeVsExpenseQuerySchema:
+      type: object
+      properties:
+        months:
+          type: integer
+          minimum: 1
+          maximum: 24
+          default: 6
+      additionalProperties: false
+    reportMonthlyExportQuerySchema:
+      type: object
+      properties:
+        month:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+        format:
+          type: string
+          enum:
+            - pdf
+          default: pdf
+      additionalProperties: false
+    reportShareSchema:
+      type: object
+      properties:
+        month:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+        toEmail:
+          type: string
+          maxLength: 254
+        message:
+          type: string
+          maxLength: 500
+      required:
+        - toEmail
+      additionalProperties: false
+    reportTargetRefSchema:
+      type: string
+      maxLength: 255
+      pattern: ^(overview|by-period|by-category|forecast)(\?[A-Za-z0-9=&,-]+)?$
+    resetPasswordSchema:
+      type: object
+      properties:
+        token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+        newPassword:
+          type: string
+          minLength: 10
+          maxLength: 128
+      required:
+        - token
+        - newPassword
+      additionalProperties: false
+    resolveFlagSchema:
+      type: object
+      properties:
+        flag:
+          type: string
+          enum:
+            - anomaly
+            - duplicate
+        action:
+          type: string
+          enum:
+            - keep
+            - delete
+      required:
+        - flag
+        - action
+      additionalProperties: false
+    tipIdParamSchema:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^\d{1,20}$
+      required:
+        - id
+      additionalProperties: false
+    tipTemplateCodeSchema:
+      type: string
+      pattern: ^[A-Z0-9_]{1,40}$
+    tokenSchema:
+      type: string
+      pattern: ^[A-Za-z0-9_-]{43}$
+    updateAnnouncementSchema:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 150
+        body:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        level:
+          type: string
+          enum:
+            - info
+            - warning
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        isActive:
+          type: boolean
+      additionalProperties: false
+    updateBookmarkSchema:
+      type: object
+      properties:
+        note:
+          type:
+            - string
+            - "null"
+          maxLength: 500
+      additionalProperties: false
+    updateCategorySchema:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        icon:
+          type:
+            - string
+            - "null"
+          pattern: ^[a-z0-9-]{1,40}$
+        color:
+          type:
+            - string
+            - "null"
+          pattern: ^#[0-9A-Fa-f]{6}$
+        isActive:
+          type: boolean
+        sortOrder:
+          type: integer
+          minimum: 0
+          maximum: 32767
+      additionalProperties: false
+    updateImportRowsSchema:
+      type: object
+      properties:
+        options:
+          type: object
+          properties:
+            dateFormat:
+              type: string
+              enum:
+                - YYYY-MM-DD
+                - DD/MM/YYYY
+                - MM/DD/YYYY
+            mapping:
+              type: object
+              properties:
+                date:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                  maximum: 49
+                amount:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                  maximum: 49
+                type:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                  maximum: 49
+                description:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                  maximum: 49
+                category:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                  maximum: 49
+              required:
+                - date
+                - amount
+                - type
+                - description
+                - category
+              additionalProperties: false
+          additionalProperties: false
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              rowNumber:
+                type: integer
+                minimum: 2
+              categoryId:
+                type: integer
+                exclusiveMinimum: 0
+              selected:
+                type: boolean
+            required:
+              - rowNumber
+            additionalProperties: false
+          maxItems: 200
+        setAllSelected:
+          type: boolean
+      additionalProperties: false
+    updateProfileSchema:
+      type: object
+      properties:
+        fullName:
+          type: string
+        academicYear:
+          type:
+            - string
+            - "null"
+          enum:
+            - year_1
+            - year_2
+            - year_3
+            - year_4
+            - year_5
+            - postgraduate
+            - other
+            - null
+        monthlyAllowanceBaseline:
+          type:
+            - string
+            - "null"
+          pattern: ^\d{1,12}(\.\d{1,2})?$
+        monthlySavingsGoal:
+          type:
+            - string
+            - "null"
+          pattern: ^\d{1,12}(\.\d{1,2})?$
+        currency:
+          type: string
+          enum:
+            - USD
+            - VND
+        timezone:
+          type: string
+        preferences:
+          type: object
+          properties:
+            theme:
+              type: string
+              enum:
+                - light
+                - dark
+                - system
+            fontScale:
+              type: number
+              minimum: 0.875
+              maximum: 1.5
+            locale:
+              type: string
+              enum:
+                - en
+          additionalProperties: false
+        aiOptIn:
+          type: boolean
+      additionalProperties: false
+    updateRecurringRuleSchema:
+      type: object
+      properties:
+        categoryId:
+          type: integer
+          exclusiveMinimum: 0
+        amount:
+          type: string
+          pattern: ^\d{1,12}(\.\d{1,2})?$
+        description:
+          type:
+            - string
+            - "null"
+          maxLength: 255
+        frequency:
+          type: string
+          enum:
+            - weekly
+            - monthly
+            - yearly
+        intervalCount:
+          type: integer
+          minimum: 1
+          maximum: 12
+        dayOfMonth:
+          type:
+            - integer
+            - "null"
+          minimum: 1
+          maximum: 31
+        dayOfWeek:
+          type:
+            - integer
+            - "null"
+          minimum: 1
+          maximum: 7
+        endDate:
+          type:
+            - string
+            - "null"
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+        isActive:
+          type: boolean
+      additionalProperties: false
+    updateTipTemplateSchema:
+      type: object
+      properties:
+        titleTpl:
+          type: string
+          minLength: 1
+          maxLength: 150
+        bodyTpl:
+          type: string
+          minLength: 1
+          maxLength: 500
+        isActive:
+          type: boolean
+      additionalProperties: false
+    updateTransactionSchema:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - income
+            - expense
+        categoryId:
+          type: integer
+          exclusiveMinimum: 0
+        amount:
+          type: string
+          pattern: ^\d{1,12}(\.\d{1,2})?$
+        txnDate:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+        description:
+          type:
+            - string
+            - "null"
+          maxLength: 255
+        aiSuggestedCategoryId:
+          type:
+            - integer
+            - "null"
+          exclusiveMinimum: 0
+        aiConfidence:
+          type:
+            - string
+            - "null"
+          pattern: ^(0(\.\d{1,3})?|1(\.0{1,3})?)$
+        version:
+          type: integer
+          minimum: 1
+      required:
+        - version
+      additionalProperties: false
+    upsertBudgetsSchema:
+      type: object
+      properties:
+        month:
+          type: string
+          pattern: ^(\d{4})-(\d{2})-(\d{2})$
+        budgets:
+          type: array
+          items:
+            type: object
+            properties:
+              categoryId:
+                type: integer
+                exclusiveMinimum: 0
+              limitAmount:
+                type: string
+                pattern: ^\d{1,12}(\.\d{1,2})?$
+              alertThresholdPct:
+                type: integer
+                minimum: 50
+                maximum: 100
+                default: 80
+            required:
+              - categoryId
+              - limitAmount
+            additionalProperties: false
+          minItems: 1
+          maxItems: 200
+      required:
+        - month
+        - budgets
+      additionalProperties: false
+    uuidParamSchema:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+      required:
+        - id
+      additionalProperties: false
+    verifyEmailSchema:
+      type: object
+      properties:
+        token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+      required:
+        - token
+      additionalProperties: false
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Machine-readable error slug, e.g. "validation-failed".
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        requestId:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+            required:
+              - field
+              - message
+          description: Present on 422 validation-failed responses, one entry per invalid field.
+      required:
+        - type
+        - title
+        - status
+      description: RFC 9457 application/problem+json body.
+    SessionIdParam:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+      required:
+        - id
+      additionalProperties: false
+    NotificationIdParam:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^\d{1,20}$
+      required:
+        - id
+      additionalProperties: false
+    TipIdParam:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^\d{1,20}$
+      required:
+        - id
+      additionalProperties: false
+    AdminCategoriesQuery:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - income
+            - expense
+      additionalProperties: false
+    AdminCategoryDeleteQuery:
+      type: object
+      properties:
+        archive:
+          type: string
+          enum:
+            - "true"
+            - "false"
+      additionalProperties: false
+  parameters: {}
+paths:
+  /api/v1/auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register a new student account.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/registerSchema"
+      responses:
+        "201":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/auth/verify-email:
+    post:
+      tags:
+        - Auth
+      summary: Verify email with a one-time token.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/verifyEmailSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/auth/resend-verification:
+    post:
+      tags:
+        - Auth
+      summary: Resend the verification email.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/emailOnlySchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/auth/forgot-password:
+    post:
+      tags:
+        - Auth
+      summary: Request a password-reset email.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/emailOnlySchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/auth/reset-password:
+    post:
+      tags:
+        - Auth
+      summary: Reset password with a one-time token.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/resetPasswordSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Log in with email + password; sets the refresh cookie.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/loginSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Rotate the refresh cookie for a new access token.
+      security: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Revoke the current session (refresh-token family).
+      security: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/auth/logout-all:
+    post:
+      tags:
+        - Auth
+      summary: Revoke every session of the current user.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/auth/login:
+    post:
+      tags:
+        - Admin Auth
+      summary: Admin password step; returns a short-lived MFA challenge token.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/adminLoginSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/auth/mfa/verify:
+    post:
+      tags:
+        - Admin Auth
+      summary: Admin TOTP/recovery-code step; sets the refresh cookie.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/mfaVerifySchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/me:
+    get:
+      tags:
+        - Users
+      summary: Get the current user's profile.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    patch:
+      tags:
+        - Users
+      summary: Update profile fields (name, preferences).
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/updateProfileSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      tags:
+        - Users
+      summary: Delete the current account (right to erasure) — student-only.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/deleteAccountSchema"
+      responses:
+        "202":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/me/password:
+    patch:
+      tags:
+        - Users
+      summary: Change password (keeps the current session, revokes the rest).
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/changePasswordSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/me/sessions:
+    get:
+      tags:
+        - Users
+      summary: List active sessions (refresh-token families).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/me/sessions/{id}:
+    delete:
+      tags:
+        - Users
+      summary: Revoke one session by id.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/me/export:
+    get:
+      tags:
+        - Users
+      summary: Export all personal data (JSON or CSV) — student-only, 3/day.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - json
+              - csv
+            default: json
+          required: false
+          name: format
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/categories:
+    get:
+      tags:
+        - Categories
+      summary: List categories (system + own).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - income
+              - expense
+          required: false
+          name: type
+          in: query
+        - schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+          required: false
+          name: includeInactive
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      tags:
+        - Categories
+      summary: Create a custom category.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/createCategorySchema"
+      responses:
+        "201":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/categories/{id}:
+    patch:
+      tags:
+        - Categories
+      summary: Rename/recolor a custom category.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/updateCategorySchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      tags:
+        - Categories
+      summary: Delete (or archive) a custom category.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: false
+          name: reassignTo
+          in: query
+        - schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+          required: false
+          name: archive
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/transactions:
+    get:
+      tags:
+        - Transactions
+      summary: List/search/filter transactions (paginated).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^(\d{4})-(\d{2})-(\d{2})$
+          required: false
+          name: from
+          in: query
+        - schema:
+            type: string
+            pattern: ^(\d{4})-(\d{2})-(\d{2})$
+          required: false
+          name: to
+          in: query
+        - schema:
+            type: string
+            enum:
+              - income
+              - expense
+          required: false
+          name: type
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{1,10}(,\d{1,10}){0,19}$
+          required: false
+          name: categoryId
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          required: false
+          name: q
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{1,12}(\.\d{1,2})?$
+          required: false
+          name: minAmount
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{1,12}(\.\d{1,2})?$
+          required: false
+          name: maxAmount
+          in: query
+        - schema:
+            type: string
+            enum:
+              - txnDate
+              - -txnDate
+              - amount
+              - -amount
+              - createdAt
+              - -createdAt
+            default: -txnDate
+          required: false
+          name: sort
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+            default: "false"
+          required: false
+          name: deleted
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      tags:
+        - Transactions
+      summary: Create a transaction. Supports `Idempotency-Key`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/createTransactionSchema"
+      responses:
+        "201":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/transactions/{id}:
+    get:
+      tags:
+        - Transactions
+      summary: Get one transaction.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    patch:
+      tags:
+        - Transactions
+      summary: Update a transaction (optimistic locking via `version`).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/updateTransactionSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: Conflict (duplicate, already committed, optimistic-lock mismatch, etc).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      tags:
+        - Transactions
+      summary: Soft-delete a transaction.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/transactions/{id}/restore:
+    post:
+      tags:
+        - Transactions
+      summary: Restore a soft-deleted transaction.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/transactions/{id}/history:
+    get:
+      tags:
+        - Transactions
+      summary: Get the edit history of a transaction.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/transactions/{id}/resolve-flag:
+    post:
+      tags:
+        - Transactions
+      summary: Resolve an anomaly/duplicate flag on a transaction.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/resolveFlagSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/recurring-rules:
+    get:
+      tags:
+        - Recurring Rules
+      summary: List recurring rules.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      tags:
+        - Recurring Rules
+      summary: Create a recurring rule.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/createRecurringRuleSchema"
+      responses:
+        "201":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/recurring-rules/{id}:
+    patch:
+      tags:
+        - Recurring Rules
+      summary: Update a recurring rule.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/updateRecurringRuleSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      tags:
+        - Recurring Rules
+      summary: Delete a recurring rule.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/budgets:
+    get:
+      tags:
+        - Budgets
+      summary: List budgets for a month.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^(\d{4})-(\d{2})-(\d{2})$
+          required: false
+          name: month
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      tags:
+        - Budgets
+      summary: Bulk upsert budgets for a month. Supports `Idempotency-Key`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/upsertBudgetsSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/budgets/copy-previous:
+    post:
+      tags:
+        - Budgets
+      summary: Copy last month's budgets into the given month.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/copyPreviousBudgetsSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/budgets/{id}:
+    delete:
+      tags:
+        - Budgets
+      summary: Delete a budget line.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/notifications:
+    get:
+      tags:
+        - Notifications
+      summary: List notifications.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+            default: "false"
+          required: false
+          name: unreadOnly
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/notifications/read-all:
+    post:
+      tags:
+        - Notifications
+      summary: Mark every notification read.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/notifications/stream-ticket:
+    post:
+      tags:
+        - Notifications
+      summary: Get a one-time ticket for the SSE stream.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/notifications/{id}/read:
+    post:
+      tags:
+        - Notifications
+      summary: Mark one notification read.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,20}$
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/notifications/stream:
+    get:
+      tags:
+        - Notifications
+      summary: Server-Sent Events stream of live notifications (auth via `?ticket=`, not Bearer).
+      security: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/dashboard/summary:
+    get:
+      tags:
+        - Dashboard
+      summary: Dashboard widgets summary for a month.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^(\d{4})-(\d{2})-(\d{2})$
+          required: false
+          name: month
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/ai/categorize/suggest:
+    post:
+      tags:
+        - AI
+      summary: "Get a category suggestion for a merchant/description (3-tier: rules → keywords → LLM)."
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/categorizeSuggestSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/ai/feedback:
+    post:
+      tags:
+        - AI
+      summary: Submit accept/reject feedback on an AI suggestion.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/aiFeedbackSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/announcements/active:
+    get:
+      tags:
+        - Announcements
+      summary: List active announcements (public).
+      security: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/categories:
+    get:
+      tags:
+        - Admin
+      summary: List all categories (admin).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - income
+              - expense
+          required: false
+          name: type
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      tags:
+        - Admin
+      summary: Create a system category (admin).
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/createCategorySchema"
+      responses:
+        "201":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/categories/{id}:
+    patch:
+      tags:
+        - Admin
+      summary: Update any category (admin).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/updateCategorySchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      tags:
+        - Admin
+      summary: Delete/archive any category (admin).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+          required: false
+          name: archive
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: Conflict (duplicate, already committed, optimistic-lock mismatch, etc).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/tip-templates:
+    get:
+      tags:
+        - Admin
+      summary: List tip templates (admin).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      tags:
+        - Admin
+      summary: Create a tip template (admin).
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/createTipTemplateSchema"
+      responses:
+        "201":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/tip-templates/preview:
+    post:
+      tags:
+        - Admin
+      summary: Render a tip template preview (admin).
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/previewTipTemplateSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/tip-templates/{id}:
+    patch:
+      tags:
+        - Admin
+      summary: Update a tip template (admin).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/updateTipTemplateSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      tags:
+        - Admin
+      summary: Delete a tip template (admin).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/announcements:
+    get:
+      tags:
+        - Admin
+      summary: List announcements incl. inactive (admin).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      tags:
+        - Admin
+      summary: Create an announcement (admin).
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/createAnnouncementSchema"
+      responses:
+        "201":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/announcements/{id}:
+    patch:
+      tags:
+        - Admin
+      summary: Update an announcement (admin).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/updateAnnouncementSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      tags:
+        - Admin
+      summary: Delete an announcement (admin).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/users:
+    get:
+      tags:
+        - Admin
+      summary: Search/list student accounts (admin).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 254
+          required: false
+          name: q
+          in: query
+        - schema:
+            type: string
+            enum:
+              - pending
+              - active
+              - disabled
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/users/{id}:
+    get:
+      tags:
+        - Admin
+      summary: Get one student account (admin).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/users/{id}/disable:
+    post:
+      tags:
+        - Admin
+      summary: Disable a student account (admin).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/users/{id}/enable:
+    post:
+      tags:
+        - Admin
+      summary: Re-enable a student account (admin).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/users/{id}/send-reset:
+    post:
+      tags:
+        - Admin
+      summary: Send a password-reset email to a student (admin).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/stats/overview:
+    get:
+      tags:
+        - Admin
+      summary: Platform-wide stats overview (admin).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/stats/categories-usage:
+    get:
+      tags:
+        - Admin
+      summary: Category usage stats (admin).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/admin/audit-logs:
+    get:
+      tags:
+        - Admin
+      summary: Search the admin audit log (admin, read-only).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: from
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: to
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 80
+          required: false
+          name: action
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          required: false
+          name: actorId
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Authenticated but not allowed (wrong role).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/imports/template:
+    get:
+      tags:
+        - Imports
+      summary: Download the CSV import template.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/imports:
+    post:
+      tags:
+        - Imports
+      summary: Upload a CSV file to start an import batch (multipart/form-data, 10/hour).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "413":
+          description: Upload exceeds the size limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "415":
+          description: Unsupported file type.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/imports/{id}:
+    get:
+      tags:
+        - Imports
+      summary: Get an import batch (preview rows, paginated).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            enum:
+              - all
+              - errors
+              - duplicates
+              - needs_review
+            default: all
+          required: false
+          name: filter
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      tags:
+        - Imports
+      summary: Discard an import batch.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/imports/{id}/rows:
+    patch:
+      tags:
+        - Imports
+      summary: Edit preview rows before commit.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/updateImportRowsSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/imports/{id}/commit:
+    post:
+      tags:
+        - Imports
+      summary: Commit an import batch (creates transactions). Supports `Idempotency-Key`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: Conflict (duplicate, already committed, optimistic-lock mismatch, etc).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/imports/{id}/errors.csv:
+    get:
+      tags:
+        - Imports
+      summary: Download the row-level error report as CSV.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/reports/category-breakdown:
+    get:
+      tags:
+        - Reports
+      summary: Category breakdown report.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^(\d{4})-(\d{2})-(\d{2})$
+          required: true
+          name: from
+          in: query
+        - schema:
+            type: string
+            pattern: ^(\d{4})-(\d{2})-(\d{2})$
+          required: true
+          name: to
+          in: query
+        - schema:
+            type: string
+            enum:
+              - income
+              - expense
+          required: false
+          name: type
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d{1,10}(,\d{1,10}){0,19}$
+          required: false
+          name: categoryId
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/reports/income-vs-expense:
+    get:
+      tags:
+        - Reports
+      summary: Income vs expense report.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 24
+            default: 6
+          required: false
+          name: months
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/reports/daily-weekly:
+    get:
+      tags:
+        - Reports
+      summary: Daily/weekly spending report.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^(\d{4})-(\d{2})-(\d{2})$
+          required: false
+          name: month
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/reports/monthly/export:
+    get:
+      tags:
+        - Reports
+      summary: Export the monthly report as PDF or PNG.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^(\d{4})-(\d{2})-(\d{2})$
+          required: false
+          name: month
+          in: query
+        - schema:
+            type: string
+            enum:
+              - pdf
+            default: pdf
+          required: false
+          name: format
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/reports/monthly/share:
+    post:
+      tags:
+        - Reports
+      summary: Email the monthly report to the current user (5/day).
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/reportShareSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/insights:
+    get:
+      tags:
+        - Insights
+      summary: List monthly AI insights.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/insights/{month}:
+    get:
+      tags:
+        - Insights
+      summary: Get the insight for one month.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^(\d{4})-(\d{2})-(\d{2})$
+          required: true
+          name: month
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/insights/{month}/regenerate:
+    post:
+      tags:
+        - Insights
+      summary: Regenerate the insight for one month (3/30days).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^(\d{4})-(\d{2})-(\d{2})$
+          required: true
+          name: month
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/tips:
+    get:
+      tags:
+        - Tips
+      summary: List personalised saving tips.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/tips/{id}/pin:
+    post:
+      tags:
+        - Tips
+      summary: Pin a tip.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,20}$
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/tips/{id}/unpin:
+    post:
+      tags:
+        - Tips
+      summary: Unpin a tip.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,20}$
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/tips/{id}/dismiss:
+    post:
+      tags:
+        - Tips
+      summary: Dismiss a tip.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,20}$
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/activity/recent:
+    get:
+      tags:
+        - Activity
+      summary: Recent cross-feature activity feed.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 10
+          required: false
+          name: limit
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/forecast/next-month:
+    get:
+      tags:
+        - Forecast
+      summary: Forecast next month's spend from recent history.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/bookmarks:
+    get:
+      tags:
+        - Bookmarks
+      summary: List bookmarked tips/reports.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - tip
+              - insight
+              - report
+          required: false
+          name: type
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          required: false
+          name: q
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      tags:
+        - Bookmarks
+      summary: Create a bookmark. Supports `Idempotency-Key`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/createBookmarkSchema"
+      responses:
+        "201":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/bookmarks/{id}:
+    patch:
+      tags:
+        - Bookmarks
+      summary: Update a bookmark (e.g. note).
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/updateBookmarkSchema"
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: One or more fields failed validation.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      tags:
+        - Bookmarks
+      summary: Delete a bookmark.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{1,10}$
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "401":
+          description: Missing/invalid access token.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Resource not found (or owned by another user).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/health/live:
+    get:
+      tags:
+        - Health
+      summary: "Liveness probe: the process is up."
+      security: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/health/ready:
+    get:
+      tags:
+        - Health
+      summary: "Readiness probe: DB + Redis reachable."
+      security: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties: {}
+        "429":
+          description: Rate limit exceeded.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+webhooks: {}

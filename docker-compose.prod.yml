@@ -1,0 +1,262 @@
+# =============================================================================
+# docker-compose.prod.yml (PRODUCTION)
+# docs/spec/04 §4.4 (Bảng 12) · docs/spec/10 §10.4/§10.5 · docs/spec/09 §9.16.
+# Two networks: `web_net` (nginx <-> api, has a gateway so api/worker keep outbound internet
+# access for SMTP/AI/Sentry) and `data_net` (internal: true — mysql/redis are NEVER reachable
+# from outside the Docker network, no host port published, no internet access needed either).
+# Secrets come from `.env.production` (git-ignored — copy `.env.production.example`, see
+# docs/deploy.md). Two `api` replicas (api-1/api-2) behind nginx's own round-robin upstream allow
+# a rolling restart with zero downtime (deploy.yml restarts api-1, waits healthy, then api-2).
+#
+# Local Windows/Docker Desktop test run (prompts/20 completion criteria):
+#   npm run certs:dev            # self-signed cert for https://localhost
+#   npm run docker:prod:up       # build + start everything
+#   npm run docker:prod:migrate  # prisma migrate deploy (one-off, --profile tools)
+#   open https://localhost (click through the self-signed-cert warning)
+# =============================================================================
+
+name: campuscoin-prod
+
+networks:
+  web_net:
+  data_net:
+    internal: true
+
+volumes:
+  mysql_data:
+  redis_data:
+  audit_archive_data:
+
+# Security review finding (P20, Medium): api-1/api-2/worker are internet-facing (or, for worker,
+# outbound-capable) processes that only ever need the DML-only `cc_app` DB account — the old single
+# shared `env_file: .env.production` handed them MYSQL_ROOT_PASSWORD, DATABASE_MIGRATOR_URL and
+# ADMIN_PASSWORD too, so an RCE in any one of them would have handed over full DB root, defeating
+# the cc_app/cc_migrator least-privilege split docs/spec/06 §6.1 and CLAUDE.md's own invariants
+# already rely on. Every var below is still read from the same `.env.production` file (via
+# `--env-file`, compose's own `${VAR}` interpolation — see package.json's `docker:prod:*` scripts),
+# just explicitly per-service now instead of handed over wholesale. ADMIN_EMAIL/ADMIN_PASSWORD are
+# deliberately NOT listed here — pass them just for the one bootstrap command instead (docs/deploy.md
+# §7: `docker compose exec -e ADMIN_EMAIL=… -e ADMIN_PASSWORD=… api …`).
+x-app-env: &app-env
+  environment:
+    NODE_ENV: production
+    APP_URL: ${APP_URL}
+    API_URL: ${API_URL}
+    CORS_ORIGINS: ${CORS_ORIGINS}
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+    DATABASE_URL: ${DATABASE_URL}
+    REDIS_URL: ${REDIS_URL}
+    JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+    JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+    JWT_KID: ${JWT_KID}
+    ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
+    REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-7d}
+    IP_HASH_SECRET: ${IP_HASH_SECRET}
+    HIBP_ENABLED: ${HIBP_ENABLED:-true}
+    DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY}
+    DATA_ENCRYPTION_KEY_VERSION: ${DATA_ENCRYPTION_KEY_VERSION:-1}
+    SMTP_HOST: ${SMTP_HOST}
+    SMTP_PORT: ${SMTP_PORT}
+    SMTP_USER: ${SMTP_USER}
+    SMTP_PASS: ${SMTP_PASS}
+    MAIL_FROM: ${MAIL_FROM}
+    SUPPORT_EMAIL: ${SUPPORT_EMAIL}
+    AI_PROVIDER: ${AI_PROVIDER:-gemini}
+    AI_API_KEY: ${AI_API_KEY}
+    AI_MODEL: ${AI_MODEL}
+    AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-3000}
+    AI_DAILY_QUOTA: ${AI_DAILY_QUOTA:-200}
+    SENTRY_DSN: ${SENTRY_DSN}
+    SENTRY_ENV: ${SENTRY_ENV:-production}
+    AUDIT_ARCHIVE_DIR: ${AUDIT_ARCHIVE_DIR:-backups/audit}
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_TAWK_PROPERTY_ID: ${VITE_TAWK_PROPERTY_ID:-}
+        VITE_TAWK_WIDGET_ID: ${VITE_TAWK_WIDGET_ID:-}
+    # IMAGE_WEB/IMAGE_API default to a bare local tag (`npm run docker:prod:up`, prompts/20's local
+    # Windows test run); deploy.yml exports the full `ghcr.io/<repo>-web` path before `pull`/`up`
+    # (security review finding, Medium — these used to be a name `docker compose pull` could never
+    # actually find on GHCR, so a real deploy silently ran whatever was last built locally instead
+    # of the image Trivy had just scanned).
+    image: ${IMAGE_WEB:-campuscoin-web}:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks: [web_net]
+    ports:
+      - '80:8080'
+      - '443:8443'
+    volumes:
+      # infra/certs/ (self-signed, npm run certs:dev) locally, or Let's Encrypt's
+      # /etc/letsencrypt/live/<domain>/ in real production — see docs/deploy.md.
+      - ./infra/certs:/etc/nginx/certs:ro
+      - ./infra/nginx/acme:/usr/share/nginx/acme:ro
+      # Maintenance mode: `touch infra/nginx/maintenance-control/maintenance.flag` on the host
+      # takes the site down; `rm` it to restore service. The whole directory is mounted (not the
+      # file itself) so Docker never has to auto-create the bind-mount target as an empty dir the
+      # first time this repo is checked out — see infra/nginx/maintenance-control/.gitkeep.
+      - ./infra/nginx/maintenance-control:/etc/nginx/maintenance-control:ro
+    depends_on:
+      api-1:
+        condition: service_healthy
+      api-2:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+
+  api-1: &api
+    <<: *app-env
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: ${IMAGE_API:-campuscoin-api}:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks: [web_net, data_net]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  api-2:
+    <<: *api
+
+  worker:
+    <<: *app-env
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: ${IMAGE_API:-campuscoin-api}:${IMAGE_TAG:-local}
+    command: ['node', 'dist/worker.js']
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    # No HTTP server to probe — the image's own HEALTHCHECK (GET /api/v1/health/live) only
+    # applies to `api`; Compose lets a service opt out of the inherited image HEALTHCHECK.
+    healthcheck:
+      disable: true
+    volumes:
+      # cleanup.expired (jobs/processors/cleanup-expired.processor.ts) archives >12mo audit logs
+      # here (AUDIT_ARCHIVE_DIR) — a real volume, not tmpfs, so archives survive a restart.
+      - audit_archive_data:/app/backend/backups/audit
+    networks: [web_net, data_net]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # One-off: `npm run docker:prod:migrate` (docker compose --profile tools run --rm migrate).
+  # Targets the Dockerfile's `build` stage (full node_modules incl. the `prisma` CLI + devDeps),
+  # not the slim `runtime` image the 3 services above use — keeps their image free of build
+  # tooling (Bảng 12) while still having something able to run `prisma migrate deploy`.
+  migrate:
+    # Only DATABASE_MIGRATOR_URL — `prisma migrate deploy` never boots the app (config/env.ts's
+    # full Zod-validated config, JWT keys etc. are irrelevant here), so it gets none of them.
+    environment:
+      NODE_ENV: production
+      DATABASE_MIGRATOR_URL: ${DATABASE_MIGRATOR_URL}
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: build
+    working_dir: /app/backend
+    command: ['npm', 'run', 'db:deploy']
+    profiles: [tools]
+    networks: [data_net]
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env.production}
+      # Read by database/create_users.prod.sh — see .env.production.example (security review
+      # finding, P20, Medium: the dev create_users.sql's hardcoded passwords must never be what
+      # production's cc_app/cc_migrator accounts actually use).
+      CC_APP_PASSWORD: ${CC_APP_PASSWORD:?Set CC_APP_PASSWORD in .env.production (must match DATABASE_URL)}
+      CC_MIGRATOR_PASSWORD: ${CC_MIGRATOR_PASSWORD:?Set CC_MIGRATOR_PASSWORD in .env.production (must match DATABASE_MIGRATOR_URL)}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+      # docs/spec/09 §9.13 (Bảng 59): binlog on for point-in-time recovery, 14 days of retention —
+      # infra/backup/binlog-sync.sh copies new binlog files offsite every 15 min (cron).
+      - --log-bin=mysql-bin
+      - --binlog-expire-logs-seconds=1209600
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/create_users.prod.sh:/docker-entrypoint-initdb.d/01-create_users.sh:ro
+    networks: [data_net]
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1536M
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.production}
+    # requirepass: no anonymous access; appendonly: durability; maxmemory-policy noeviction: a
+    # rate-limit/session-revocation key must never be silently evicted (see docker-compose.yml's
+    # identical comment); rename-command disables destructive/reconfiguration commands from any
+    # client that somehow got the password (docs/spec/04 §4.4 "tắt lệnh nguy hiểm FLUSHALL,
+    # CONFIG") — confirmed neither ioredis nor bullmq call CONFIG/FLUSHALL/FLUSHDB internally.
+    command:
+      [
+        'sh',
+        '-c',
+        'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes --maxmemory-policy noeviction --rename-command FLUSHALL "" --rename-command FLUSHDB "" --rename-command CONFIG ""',
+      ]
+    volumes:
+      - redis_data:/data
+    networks: [data_net]
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M

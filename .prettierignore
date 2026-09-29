@@ -1,0 +1,15 @@
+# Generated / vendored
+node_modules
+dist
+coverage
+playwright-report
+test-results
+package-lock.json
+
+# Hand-written docs and prompt kit – never reformat
+docs
+prompts
+.claude
+CLAUDE.md
+HUONG-DAN.md
+PROGRESS.md

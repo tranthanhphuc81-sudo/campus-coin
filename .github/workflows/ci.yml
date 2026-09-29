@@ -1,0 +1,218 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push on the same PR/branch cancels the previous run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege default (security review, P20) — only the `codeql` job needs more, and declares
+# its own `security-events: write` already.
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  # ---- lint + typecheck ------------------------------------------------------------------------
+  lint-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+
+  # ---- unit + integration tests (real MySQL/Redis service containers) --------------------------
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      NODE_ENV: test
+      DATABASE_URL: mysql://cc_app:cc_app_ci_password@127.0.0.1:3306/campus_coin
+      DATABASE_MIGRATOR_URL: mysql://cc_migrator:cc_migrator_ci_password@127.0.0.1:3306/campus_coin
+      REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # docs/spec/06 create_users.sql creates the app/migrator accounts + shadow DB — the MySQL
+      # service image itself only gives us a root account (P20: "CI must start MySQL + db:deploy").
+      - name: Create app/migrator DB accounts
+        run: mysql -h 127.0.0.1 -uroot -proot < database/create_users.sql
+      - name: Point create_users.sql's dev passwords at CI's own (they differ on purpose)
+        # create_users.sql's own passwords are the checked-in DEV defaults; CI generates its own
+        # per the env vars above instead of trusting a committed password, so update them in place.
+        run: |
+          mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'cc_app'@'%' IDENTIFIED BY 'cc_app_ci_password'; ALTER USER 'cc_migrator'@'%' IDENTIFIED BY 'cc_migrator_ci_password'; FLUSH PRIVILEGES;"
+      - run: npm run db:deploy -w @campuscoin/backend
+      - run: npm test
+      - run: npm run build
+
+  # ---- E2E (Playwright, chromium) --------------------------------------------------------------
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [test]
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+      mailpit:
+        image: axllent/mailpit
+        ports: ['1025:1025', '8025:8025']
+    env:
+      NODE_ENV: development
+      DATABASE_URL: mysql://cc_app:cc_app_ci_password@127.0.0.1:3306/campus_coin
+      DATABASE_MIGRATOR_URL: mysql://cc_migrator:cc_migrator_ci_password@127.0.0.1:3306/campus_coin
+      REDIS_URL: redis://127.0.0.1:6379
+      SMTP_HOST: 127.0.0.1
+      SMTP_PORT: '1025'
+      CORS_ORIGINS: http://localhost:5174
+      APP_URL: http://localhost:5174
+      API_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: mysql -h 127.0.0.1 -uroot -proot < database/create_users.sql
+      - run: |
+          mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'cc_app'@'%' IDENTIFIED BY 'cc_app_ci_password'; ALTER USER 'cc_migrator'@'%' IDENTIFIED BY 'cc_migrator_ci_password'; FLUSH PRIVILEGES;"
+      - run: npm run db:deploy -w @campuscoin/backend
+      - run: npm run db:seed -w @campuscoin/backend
+      - run: npx playwright install --with-deps chromium
+      # Real JWT/encryption keys (CI never reuses the repo's fake test-mode fallbacks for a
+      # process that isn't the Vitest runner itself — see config/env.ts's `isTestEnv` guard).
+      - name: Generate ephemeral keys for this run
+        # scripts/generate-keys.mjs's own output is meant to be pasted into a quoted .env value —
+        # re-derive the same 3 secrets here, unquoted, in the plain NAME=value shape $GITHUB_ENV
+        # needs (its JWT PEM values are already single-line with literal \n, no real newlines).
+        run: |
+          node -e "
+            const c = require('node:crypto');
+            const { privateKey, publicKey } = c.generateKeyPairSync('ed25519', {
+              privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+              publicKeyEncoding: { type: 'spki', format: 'pem' },
+            });
+            const esc = (s) => s.trim().replace(/\r?\n/g, '\\\\n');
+            console.log('JWT_PRIVATE_KEY=' + esc(privateKey));
+            console.log('JWT_PUBLIC_KEY=' + esc(publicKey));
+            console.log('JWT_KID=' + c.randomBytes(8).toString('hex'));
+            console.log('DATA_ENCRYPTION_KEY=' + c.randomBytes(32).toString('base64'));
+            console.log('IP_HASH_SECRET=' + c.randomBytes(32).toString('base64'));
+          " >> "$GITHUB_ENV"
+      - name: Start API + worker in the background
+        run: |
+          npm run build -w @campuscoin/backend
+          nohup node backend/dist/server.js > api.log 2>&1 &
+          nohup node backend/dist/worker.js > worker.log 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:3000/api/v1/health/live && exit 0
+            sleep 2
+          done
+          echo "API never became healthy" && cat api.log && exit 1
+      - run: npx playwright test --project=chromium
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+      - if: failure()
+        run: cat api.log worker.log
+
+  # ---- Dependency / secret scanning --------------------------------------------------------------
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: '24' }
+      # High/Critical only — this project already tracks/accepts lower-severity advisories
+      # (PROGRESS.md's npm-audit decision log); a new High/Critical fails the build.
+      - run: npm audit --audit-level=high
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v3
+
+  # ---- Container image scan (Trivy) — blocks on High/Critical -----------------------------------
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build backend image
+        run: docker build -f backend/Dockerfile -t campuscoin-api:ci .
+      - name: Build frontend/nginx image
+        run: docker build -f frontend/Dockerfile -t campuscoin-web:ci .
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: campuscoin-api:ci
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: campuscoin-web:ci
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+      # IaC misconfig scan (docker-compose.prod.yml, Dockerfiles) — docs/spec/09 §9.16 "Trivy quét
+      # image và IaC".
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '1'

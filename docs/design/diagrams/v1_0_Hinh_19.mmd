@@ -1,9 +1,0 @@
-stateDiagram-v2
-  [*] --> Processing: node-cron 00:30 ngày 1 / user nhấn "Tạo lại"
-  Processing --> Retrying: Lỗi mạng / 429 / timeout
-  Retrying --> Processing: Backoff 2s, 8s, 32s
-  Retrying --> Fallback: Hết 3 lần thử
-  Processing --> Fallback: Output không qua kiểm tra số liệu
-  Processing --> Completed: LLM trả JSON hợp lệ
-  Fallback --> Completed: Dùng template dựng sẵn
-  Completed --> [*]

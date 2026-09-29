@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "--no-install",
+        "cross-env",
+        "API_PORT=3100",
+        "API_URL=http://localhost:3100",
+        "WEB_PORT=5180",
+        "APP_URL=http://localhost:5180",
+        "CORS_ORIGINS=http://localhost:5180",
+        "npm",
+        "run",
+        "dev"
+      ],
+      "port": 5180,
+      "autoPort": false
+    }
+  ]
+}

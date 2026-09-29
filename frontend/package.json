@@ -1,0 +1,47 @@
+{
+  "name": "@campuscoin/frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CampusCoin single-page app (React 19 + Vite + Bootstrap 5.3).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@campuscoin/shared": "^0.1.0",
+    "@fontsource/inter": "^5.3.0",
+    "@hookform/resolvers": "^5.9.1",
+    "@sentry/react": "^11.1.0",
+    "@tanstack/react-query": "^5.104.0",
+    "axios": "^1.20.0",
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1",
+    "chart.js": "^4.5.1",
+    "html-to-image": "^1.11.13",
+    "react": "^19.3.0",
+    "react-bootstrap": "^2.10.10",
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "^19.3.0",
+    "react-hook-form": "^7.89.0",
+    "react-router": "^7.18.4",
+    "set-cookie-parser": "^2.7.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^30.1.1",
+    "sass": "^1.105.0",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}

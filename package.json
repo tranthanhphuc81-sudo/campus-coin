@@ -1,40 +1,71 @@
 {
-  "name": "campus-coin",
+  "name": "campuscoin",
+  "version": "0.1.0",
   "private": true,
+  "description": "CampusCoin – Smart Spending, Student Style",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "workspaces": [
-    "api",
-    "web",
-    "packages/*"
+    "shared",
+    "backend",
+    "frontend"
   ],
   "scripts": {
-    "task": "node tools/task.mjs",
-    "prompts:build": "node tools/prompt-kit/build.mjs",
-    "dev:api": "npm run dev -w api --if-present",
-    "dev:web": "node tools/run-web-dev-if-present.mjs",
-    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev:api\" \"npm run dev:web\"",
-    "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "postinstall": "npm run build:shared && npm run db:generate",
+    "build:shared": "npm run build -w @campuscoin/shared",
+    "build": "npm run build:shared && npm run db:generate && npm run build -w @campuscoin/backend && npm run build -w @campuscoin/frontend",
+    "dev": "npm run build:shared && concurrently -k -n shared,api,web -c gray,blue,magenta \"npm run dev -w @campuscoin/shared\" \"npm run dev -w @campuscoin/backend\" \"npm run dev -w @campuscoin/frontend\"",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "npm run build:shared && npm run db:generate && npm run typecheck --workspaces --if-present && tsc -p tsconfig.json",
+    "test": "npm run build:shared && npm run db:generate && npm run test --workspaces --if-present",
+    "test:e2e": "playwright test",
+    "screenshots": "tsx --env-file-if-exists=e2e/.env e2e/screenshots.ts",
+    "test:all": "npm run lint && npm run typecheck && npm test && npm run test:e2e",
     "format": "prettier --write .",
-    "db:migrate": "npm run db:migrate -w api",
-    "db:reset": "npm run db:reset -w api",
-    "db:studio": "npm run db:studio -w api",
-    "db:seed": "npm run db:seed -w api",
-    "db:up": "docker compose -f docker-compose.dev.yml up -d mysql mailpit",
-    "db:down": "docker compose -f docker-compose.dev.yml down",
-    "db:logs": "docker compose -f docker-compose.dev.yml logs -f mysql",
-    "db:export-schema": "node tools/export-schema.mjs",
-    "keys:generate": "node tools/generate-jwt-keys.mjs"
+    "format:check": "prettier --check .",
+    "keys:generate": "node scripts/generate-keys.mjs",
+    "clean": "rimraf shared/dist backend/dist frontend/dist coverage playwright-report test-results",
+    "db:generate": "npm run db:generate -w @campuscoin/backend",
+    "certs:dev": "node scripts/generate-dev-certs.mjs",
+    "perf:bundle-check": "node scripts/check-bundle-size.mjs",
+    "package:submission": "node scripts/package-submission.mjs",
+    "docker:prod:up": "docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build",
+    "docker:prod:down": "docker compose --env-file .env.production -f docker-compose.prod.yml down",
+    "docker:prod:migrate": "docker compose --env-file .env.production -f docker-compose.prod.yml --profile tools run --rm migrate"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "concurrently": "^9.2.1",
-    "eslint": "^10.11.0",
+    "@axe-core/playwright": "^4.13.0",
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^24.19.0",
+    "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-security": "^3.0.1",
-    "prettier": "^3.6.2",
+    "eslint-plugin-security": "^4.0.1",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.9",
+    "rimraf": "^6.1.3",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.70.1"
+  },
+  "allowScripts": {
+    "argon2@0.45.1": true
+  },
+  "overrides": {
+    "@prisma/adapter-mariadb": {
+      "mariadb": "3.5.4"
+    },
+    "prisma": {
+      "mysql2": "3.24.4",
+      "@prisma/config": {
+        "deepmerge-ts": "8.0.2"
+      }
+    }
   }
 }

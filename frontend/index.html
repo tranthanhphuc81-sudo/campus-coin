@@ -1,0 +1,28 @@
+<!--
+  index.html
+  SPA entry point. Carries a `<meta http-equiv="Content-Security-Policy">` fallback (C-M2,
+  docs/security/review-p19.md) mirroring the API's helmet CSP directives
+  (backend/src/middlewares/security.ts, docs/spec/09 §9.11 Table 57) as closely as a meta tag
+  allows — a meta CSP cannot carry `frame-ancestors`; the authoritative header (incl.
+  `frame-ancestors`) is set by nginx in production (infra/nginx/, P20) — keep both in sync by hand.
+  `connect-src` additionally allows Sentry's error-ingest endpoint (P20, `*.sentry.io`) — the SDK
+  itself only loads/connects at all when VITE_SENTRY_DSN is configured (frontend/src/lib/sentry.ts).
+-->
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="CampusCoin – Smart Spending, Student Style." />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' https://embed.tawk.to; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.tawk.to; connect-src 'self' https://*.tawk.to wss://*.tawk.to https://*.sentry.io https://*.ingest.sentry.io; frame-src https://tawk.to; base-uri 'self'; form-action 'self';"
+    />
+    <title>CampusCoin</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,20 +1,11 @@
 {
-  // Prompt files và instruction files cho GitHub Copilot Chat
-  "chat.promptFiles": true,
-  "chat.promptFilesLocations": { ".github/prompts": true },
-  "chat.instructionsFilesLocations": { ".github/instructions": true },
-  "chat.useAgentsMdFile": true,
-  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
-
-  // Chất lượng mã
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "[prisma]": { "editor.defaultFormatter": "Prisma.prisma" },
-  "editor.codeActionsOnSave": { "source.fixAll.eslint": "explicit" },
-  "typescript.tsdk": "node_modules/typescript/lib",
-  "files.eol": "\n",
-
-  // Markdown/Mermaid dễ đọc tài liệu thiết kế
-  "markdown.preview.breaks": true,
-  "files.associations": { "*.mmd": "mermaid" }
+  "files.watcherExclude": {
+    "**/submission/**": true
+  },
+  "search.exclude": {
+    "**/submission": true
+  },
+  "files.exclude": {
+    "**/submission": true
+  }
 }

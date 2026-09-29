@@ -1,0 +1,128 @@
+/**
+ * app.ts
+ * Builds the Express application (no network listening here, so tests can mount it with
+ * Supertest). Middleware order matches docs/spec/04 §4.2 exactly; each block below says why it
+ * has to sit where it does. Route modules (P04+) are mounted between the body parser and
+ * `notFound` — `authenticate`/`authorize`/`validate`/rate-limit presets are applied per-route,
+ * not globally, since P03 has no protected routes yet. Non-prod builds also mount Swagger UI at
+ * `/api/v1/docs` (P21, `openapi/document.ts`).
+ * Exports: createApp
+ * Spec: docs/spec/04 §4.2 (middleware chain) · docs/spec/07 (API base path /api/v1)
+ */
+import express, { type Express } from 'express';
+import swaggerUi from 'swagger-ui-express';
+import { API_BASE_PATH, Role } from '@campuscoin/shared';
+import { config } from './config/env.js';
+import { buildOpenApiDocument } from './openapi/document.js';
+import { errorHandler } from './middlewares/errorHandler.js';
+import { authenticate } from './middlewares/authenticate.js';
+import { authorize } from './middlewares/authorize.js';
+import { corsDefault, corsWithCredentials } from './middlewares/cors.js';
+import { noStore } from './middlewares/noStore.js';
+import { notFound } from './middlewares/notFound.js';
+import { requestId } from './middlewares/requestId.js';
+import { securityHeaders } from './middlewares/security.js';
+import { httpLogger } from './lib/logger.js';
+import { activityRouter } from './modules/activity/activity.routes.js';
+import { adminAnnouncementsRouter } from './modules/admin-announcements/admin-announcements.routes.js';
+import { adminAuditRouter } from './modules/admin-audit/admin-audit.routes.js';
+import { adminAuthRouter } from './modules/admin-auth/admin-auth.routes.js';
+import { adminCategoriesRouter } from './modules/admin-categories/admin-categories.routes.js';
+import { adminStatsRouter } from './modules/admin-stats/admin-stats.routes.js';
+import { adminTipTemplatesRouter } from './modules/admin-tip-templates/admin-tip-templates.routes.js';
+import { adminUsersRouter } from './modules/admin-users/admin-users.routes.js';
+import { aiRouter } from './modules/ai/ai.routes.js';
+import { announcementsRouter } from './modules/announcements/announcements.routes.js';
+import { authRouter } from './modules/auth/auth.routes.js';
+import { bookmarksRouter } from './modules/bookmarks/bookmarks.routes.js';
+import { budgetsRouter } from './modules/budgets/budgets.routes.js';
+import { categoriesRouter } from './modules/categories/categories.routes.js';
+import { dashboardRouter } from './modules/dashboard/dashboard.routes.js';
+import { forecastRouter } from './modules/forecast/forecast.routes.js';
+import { healthRouter } from './modules/health/health.routes.js';
+import { importsRouter } from './modules/imports/imports.routes.js';
+import { insightsRouter } from './modules/insights/insights.routes.js';
+import { notificationsRouter } from './modules/notifications/notifications.routes.js';
+import { recurringRouter } from './modules/recurring/recurring.routes.js';
+import { reportsRouter } from './modules/reports/reports.routes.js';
+import { tipsRouter } from './modules/tips/tips.routes.js';
+import { transactionsRouter } from './modules/transactions/transactions.routes.js';
+import { usersRouter } from './modules/users/users.routes.js';
+
+const JSON_BODY_LIMIT = '100kb';
+
+/**
+ * Create a fully configured Express app.
+ * @returns Express application ready to be passed to `http.createServer` or Supertest.
+ */
+export function createApp(): Express {
+  const app = express();
+
+  // Only trust X-Forwarded-* in production, where Nginx/Cloudflare are the only way in; in dev
+  // trusting it would let a client spoof its own rate-limit/audit IP.
+  app.set('trust proxy', config.app.isProd ? 1 : false);
+  // Do not advertise the framework (helmet also strips it, but this needs no config lookup).
+  app.disable('x-powered-by');
+
+  // 1) requestId first: every later middleware/handler (logger, errorHandler) needs req.id.
+  app.use(requestId);
+  // 2) request logging: correlated by req.id, so it must run right after requestId.
+  app.use(httpLogger);
+  // 3) helmet + custom security headers: set before any body is read or a route can respond.
+  app.use(securityHeaders);
+  // 4) CORS: default has no credentials (Bearer-token APIs don't need cookies); the credentials
+  //    variant only applies to the auth prefix, ahead of the auth router mounted here in P04.
+  app.use(corsDefault);
+  app.use(`${API_BASE_PATH}/auth`, corsWithCredentials);
+  // The admin login/MFA endpoints also set the refresh cookie, so they need the same credentialed CORS.
+  app.use(`${API_BASE_PATH}/admin/auth`, corsWithCredentials);
+  // 5) body parsing, capped at 100kb (file uploads get their own 2MB limit at the route, not here).
+  app.use(express.json({ limit: JSON_BODY_LIMIT }));
+
+  // Dev-only API docs (Swagger UI over the generated OpenAPI 3.1 doc, docs/openapi.yaml source of
+  // truth regenerated by `npm run docs:openapi -w backend`) — never mounted in production, so a
+  // deployed instance never exposes a live schema/route map to the internet.
+  if (!config.app.isProd) {
+    app.use(`${API_BASE_PATH}/docs`, swaggerUi.serve, swaggerUi.setup(buildOpenApiDocument()));
+  }
+
+  // 6) routes. Every API response carries personal-data-safe caching semantics by default.
+  app.use(API_BASE_PATH, noStore);
+  app.use(`${API_BASE_PATH}/health`, healthRouter);
+  app.use(`${API_BASE_PATH}/auth`, authRouter);
+  app.use(`${API_BASE_PATH}/me`, usersRouter);
+  app.use(`${API_BASE_PATH}/categories`, categoriesRouter);
+  app.use(`${API_BASE_PATH}/transactions`, transactionsRouter);
+  app.use(`${API_BASE_PATH}/recurring-rules`, recurringRouter);
+  app.use(`${API_BASE_PATH}/budgets`, budgetsRouter);
+  app.use(`${API_BASE_PATH}/notifications`, notificationsRouter);
+  app.use(`${API_BASE_PATH}/dashboard`, dashboardRouter);
+  app.use(`${API_BASE_PATH}/ai`, aiRouter);
+  // Public/student (P/S): no `authenticate` here on purpose — see announcements.routes.ts.
+  app.use(`${API_BASE_PATH}/announcements`, announcementsRouter);
+  // Admin login/MFA are public (pre-auth); every other /admin/* route requires an authenticated
+  // admin — mounted after the router above so it never runs for these two endpoints (TC-07).
+  app.use(`${API_BASE_PATH}/admin/auth`, adminAuthRouter);
+  app.use(`${API_BASE_PATH}/admin`, authenticate, authorize(Role.ADMIN));
+  // P15 admin portal routers — mounted after the guard above, so they inherit it without calling
+  // `authenticate`/`authorize` themselves (each only adds its own rate-limit preset).
+  app.use(`${API_BASE_PATH}/admin/categories`, adminCategoriesRouter);
+  app.use(`${API_BASE_PATH}/admin/tip-templates`, adminTipTemplatesRouter);
+  app.use(`${API_BASE_PATH}/admin/announcements`, adminAnnouncementsRouter);
+  app.use(`${API_BASE_PATH}/admin/users`, adminUsersRouter);
+  app.use(`${API_BASE_PATH}/admin/stats`, adminStatsRouter);
+  app.use(`${API_BASE_PATH}/admin/audit-logs`, adminAuditRouter);
+  app.use(`${API_BASE_PATH}/imports`, importsRouter);
+  app.use(`${API_BASE_PATH}/reports`, reportsRouter);
+  app.use(`${API_BASE_PATH}/insights`, insightsRouter);
+  app.use(`${API_BASE_PATH}/tips`, tipsRouter);
+  app.use(`${API_BASE_PATH}/activity`, activityRouter);
+  app.use(`${API_BASE_PATH}/forecast`, forecastRouter);
+  app.use(`${API_BASE_PATH}/bookmarks`, bookmarksRouter);
+
+  // 7) catch-all 404, then the error handler — always last.
+  app.use(notFound);
+  app.use(errorHandler);
+
+  return app;
+}

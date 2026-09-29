@@ -1,0 +1,162 @@
+name: Deploy
+
+# Runs only after CI is green on main (docs/spec/10 §11.2/§11.4.4): build & push images tagged with
+# the git SHA to GHCR, deploy to staging over SSH, wait for a human approval (the "production"
+# environment below has protection rules configured in the repo's Settings → Environments — add a
+# required reviewer there; this file cannot itself declare who approves), then deploy to
+# production: backup → migrate → rolling restart api-1, then api-2.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+# Least-privilege default; each job below opts into more only where it actually needs it.
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_API: ghcr.io/${{ github.repository }}-api
+  IMAGE_WEB: ghcr.io/${{ github.repository }}-web
+
+jobs:
+  build-push:
+    # Security review finding (P20, High): `workflow_run`'s own `branches: [main]` filter matches
+    # the HEAD branch NAME of the run that triggered it — for a `pull_request`-triggered CI run,
+    # that is the PR's own source branch, which a FORK can simply name "main" too. Without the
+    # explicit checks below, a fork PR from a branch called "main" would pass CI, this job would
+    # then check out that fork's `head_sha` and — with `packages: write` below — build and push it
+    # to this repo's own GHCR under a real-looking tag, then walk it straight into the staging
+    # deploy. `event == 'push'` rules out every PR-triggered run; `head_repository.full_name ==
+    # github.repository` rules out every fork (including a same-named branch on a fork) — both are
+    # required, checking only one still leaves the other bypass open.
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      sha: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_API }}:${{ github.event.workflow_run.head_sha }}
+      - name: Build & push web (nginx + SPA) image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_WEB }}:${{ github.event.workflow_run.head_sha }}
+          build-args: |
+            VITE_API_URL=${{ vars.VITE_API_URL }}
+            VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN }}
+            VITE_TAWK_PROPERTY_ID=${{ vars.VITE_TAWK_PROPERTY_ID }}
+            VITE_TAWK_WIDGET_ID=${{ vars.VITE_TAWK_WIDGET_ID }}
+
+  deploy-staging:
+    needs: [build-push]
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy to staging over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.STAGING_DEPLOY_PATH }}
+            export IMAGE_TAG=${{ needs.build-push.outputs.sha }}
+            export IMAGE_API=${{ env.IMAGE_API }}
+            export IMAGE_WEB=${{ env.IMAGE_WEB }}
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose --env-file .env.production -f docker-compose.prod.yml pull
+            docker compose --env-file .env.production -f docker-compose.prod.yml --profile tools run --rm migrate
+            docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+
+  # Deployment to `production` (below) only starts once a reviewer approves it in the GitHub UI —
+  # configure that requirement once, in this repo's Settings → Environments → production →
+  # "Required reviewers" (docs/deploy.md). Nothing in this YAML can create that gate itself.
+  deploy-production:
+    needs: [build-push, deploy-staging]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Backup the production database first
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: cd ${{ secrets.PROD_DEPLOY_PATH }} && ./infra/backup/backup.sh
+
+      - name: Apply pending migrations
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.PROD_DEPLOY_PATH }}
+            export IMAGE_TAG=${{ needs.build-push.outputs.sha }}
+            export IMAGE_API=${{ env.IMAGE_API }}
+            export IMAGE_WEB=${{ env.IMAGE_WEB }}
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose --env-file .env.production -f docker-compose.prod.yml pull
+            docker compose --env-file .env.production -f docker-compose.prod.yml --profile tools run --rm migrate
+
+      # Rolling restart, one API replica at a time, so there is no moment with zero healthy
+      # instances behind nginx (docs/spec/10 §10.5 "rolling update từng instance API"). Compose
+      # itself has no built-in "one at a time" primitive for two differently-named services, so
+      # this restarts them as two separate `up -d` calls, each waiting for that replica's own
+      # HEALTHCHECK before moving on.
+      - name: Rolling restart — worker, then api-1, then api-2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.PROD_DEPLOY_PATH }}
+            export IMAGE_TAG=${{ needs.build-push.outputs.sha }}
+            export IMAGE_API=${{ env.IMAGE_API }}
+            export IMAGE_WEB=${{ env.IMAGE_WEB }}
+            # `export` (not a plain assignment): the `until … done` waits below run inside a
+            # SEPARATE `sh -c` subshell (via `timeout`), which only inherits exported variables —
+            # a plain `COMPOSE="…"` here left `$COMPOSE` empty in that subshell, so the wait always
+            # timed out after 60s regardless of the replica's real health (security review finding,
+            # P20, Low).
+            export COMPOSE="docker compose --env-file .env.production -f docker-compose.prod.yml"
+            $COMPOSE up -d --no-deps worker
+            $COMPOSE up -d --no-deps api-1
+            timeout 60 sh -c 'until [ "$($COMPOSE ps -q api-1 | xargs docker inspect -f "{{.State.Health.Status}}")" = healthy ]; do sleep 2; done'
+            $COMPOSE up -d --no-deps api-2
+            timeout 60 sh -c 'until [ "$($COMPOSE ps -q api-2 | xargs docker inspect -f "{{.State.Health.Status}}")" = healthy ]; do sleep 2; done'
+            $COMPOSE up -d --no-deps nginx
+
+      - name: Verify production is healthy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: curl -sfk https://127.0.0.1/api/v1/health/live || exit 1

@@ -1,0 +1,8 @@
+/**
+ * main.scss
+ * Global stylesheet entry point: forwards the curated Bootstrap 5.3 build + CampusCoin design
+ * tokens from `_tokens.scss`. Bootstrap Icons CSS is imported from `main.tsx` (plain CSS, no
+ * Sass needed); `@fontsource/inter` weight files are also imported from `main.tsx`.
+ * Spec: docs/spec/08 (UI design)
+ */
+@use 'tokens';

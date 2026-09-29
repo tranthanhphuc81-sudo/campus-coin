@@ -1,0 +1,7 @@
+date,amount,type,description,category
+2026-07-01,5.00,expense
+2026-07-02,abc,expense,Weird amount here,Food
+31/02/2026,10.00,expense,Impossible date here,Food
+2026-07-03,notanumber,expense,"=HYPERLINK(""http://evil.example"",""x"")",Food
+2026-07-05,20.00,expense,Duplicate lunch,Food
+2026-07-05,20.00,expense,Duplicate lunch,Food

@@ -1,0 +1,27 @@
+# Keep the build context small — every Dockerfile COPYs only the exact paths it needs, so
+# nothing here is ever missing on purpose, only noise that would otherwise slow/invalidate layers.
+node_modules
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+.git
+.github
+docs
+prompts
+e2e
+playwright-report
+test-results
+blob-report
+playwright/.cache
+backups
+**/backups
+*.log
+.env
+.env.*
+**/.env*
+!.env.example
+!.env.production.example
+.vscode
+.idea
+infra/certs

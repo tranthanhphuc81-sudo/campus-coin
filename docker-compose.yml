@@ -1,0 +1,70 @@
+# =============================================================================
+# docker-compose.yml (DEVELOPMENT)
+# Backing services for local dev: MySQL 8.4, Redis 7, Mailpit (fake SMTP + web inbox).
+# The API and web app run on the host with `npm run dev`. Production compose lives in
+# infra/docker/ (P20).
+# All ports bind to 127.0.0.1 only, so nothing is exposed to the LAN.
+# Values come from the root .env (Compose reads it automatically).
+# Spec: docs/spec/10 §11.1 (Local env), §11.4.2
+# =============================================================================
+name: campuscoin
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+    ports:
+      - '127.0.0.1:${MYSQL_HOST_PORT:-3306}:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/create_users.sql:/docker-entrypoint-initdb.d/01-create_users.sql:ro
+    healthcheck:
+      # $$ = literal $ so the variable is expanded inside the container, not by Compose.
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    # requirepass: no anonymous access; appendonly: AOF persistence so BullMQ jobs survive restarts;
+    # maxmemory-policy noeviction: rate-limit/session/lockout keys must never be silently evicted
+    # under memory pressure (an evicted rate-limit counter would look like "never rate limited").
+    command:
+      ['sh', '-c', 'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes --maxmemory-policy noeviction']
+    ports:
+      - '127.0.0.1:${REDIS_HOST_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:1025:1025' # SMTP
+      - '127.0.0.1:8025:8025' # Web inbox → http://localhost:8025
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:
+  redis_data:

@@ -1,5 +1,0 @@
-{
-  "_comment": "Ánh xạ cấp AI sang model. copilot: điền đúng tên hiển thị trong model picker của VS Code, vd \"Claude Sonnet 4.5 (copilot)\"; để trống = dùng model đang chọn. claude: haiku | sonnet | opus (alias của Claude Code). Sửa xong chạy: npm run prompts:build",
-  "copilot": { "🟢": "", "🔵": "", "🔴": "" },
-  "claude": { "🟢": "haiku", "🔵": "sonnet", "🔴": "opus" }
-}

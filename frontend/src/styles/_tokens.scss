@@ -1,0 +1,204 @@
+/**
+ * _tokens.scss
+ * CampusCoin design tokens: brand colours, money-status colours, typography, radii and
+ * shadows – layered on a curated subset of Bootstrap 5.3 partials (not the whole
+ * `bootstrap/scss/bootstrap` monolith, so unused CSS stays out of the bundle).
+ * Bootstrap variable overrides are plain Sass variable assignments *before* importing
+ * `functions`/`variables` (their `!default` values yield to ours). Bootstrap's own partials
+ * still reference each other with classic `@import`, so `@use … with (…)` module config does
+ * not reliably propagate across a partial-only build; `vite.config.ts`'s `quietDeps: true`
+ * silences the resulting (harmless) `@import` deprecation warnings coming from node_modules.
+ * Dark mode reuses Bootstrap 5.3's own colour-mode mechanism: `[data-bs-theme="dark"]`
+ * re-declares the `--bs-*`/`--bc-*` CSS custom properties instead of a parallel stylesheet.
+ * Spec: docs/spec/08 §8.2 (design tokens), §8.7 (accessibility – reduced motion, font scale)
+ */
+@use 'sass:color';
+
+// ---- Brand & status colours (light – the default) ------------------------------------------
+$primary: #1f4e79;
+$bc-accent: #f5b400;
+$bc-income: #1e8e3e;
+$bc-expense: #c62828;
+$bc-warning-budget: #b26a00;
+
+$body-bg: #f7f9fc;
+$body-color: #1f2d3d;
+$secondary-color: #5b6b7f;
+// Bootstrap's `secondary` *theme* colour (used by `.btn-outline-secondary`, badges, etc.) is a
+// different variable from `$secondary-color` (muted body text) above; its Bootstrap default
+// (#6c757d) falls to 4.44:1 against our lighter `$body-bg` — just under WCAG AA's 4.5:1. Reuse
+// the already contrast-checked `$secondary-color` so every "secondary" surface passes, not just
+// muted text (docs/spec/08 §8.5: "Tương phản văn bản ≥ 4.5:1").
+$secondary: $secondary-color;
+
+// ---- Brand & status colours (dark) – used only in the `[data-bs-theme="dark"]` block below.
+$primary-dark: #6ea8fe;
+$bc-accent-dark: #ffd24d;
+$bc-income-dark: #5dd27a;
+$bc-expense-dark: #ff7b72;
+$bc-warning-budget-dark: #ffb74d;
+$body-bg-dark: #0f1720;
+$surface-bg-dark: #1a2330;
+$body-color-dark: #e6edf3;
+$secondary-color-dark: #9fb0c3;
+$border-color-dark: #2a3646;
+
+// ---- Typography ------------------------------------------------------------------------------
+$font-family-sans-serif:
+  'Inter',
+  system-ui,
+  -apple-system,
+  'Segoe UI',
+  Roboto,
+  sans-serif;
+$font-size-base: 1rem; // 16px base; every size below is rem-based so font-scale (§8.7) works.
+$h1-font-size: 2rem;
+$h2-font-size: 1.5rem;
+$small-font-size: 0.875em;
+
+// ---- Radii -------------------------------------------------------------------------------------
+$border-radius: 0.5rem; // 8px – buttons, inputs, nav-pills
+$border-radius-sm: 0.375rem;
+$border-radius-lg: 0.75rem; // 12px – cards, modals
+
+// ---- Bootstrap core (order matters: functions/variables/mixins before anything else) ---------
+@import 'bootstrap/scss/functions';
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/variables-dark';
+@import 'bootstrap/scss/maps';
+@import 'bootstrap/scss/mixins';
+@import 'bootstrap/scss/utilities';
+
+// ---- Layout & base ----------------------------------------------------------------------------
+@import 'bootstrap/scss/root';
+@import 'bootstrap/scss/reboot';
+@import 'bootstrap/scss/type';
+@import 'bootstrap/scss/containers';
+@import 'bootstrap/scss/helpers';
+
+// ---- Components used by this phase's layouts, shared components and pages ---------------------
+@import 'bootstrap/scss/transitions';
+@import 'bootstrap/scss/forms';
+@import 'bootstrap/scss/buttons';
+@import 'bootstrap/scss/button-group';
+@import 'bootstrap/scss/nav';
+@import 'bootstrap/scss/navbar';
+@import 'bootstrap/scss/card';
+@import 'bootstrap/scss/breadcrumb';
+@import 'bootstrap/scss/close';
+@import 'bootstrap/scss/modal';
+@import 'bootstrap/scss/toasts';
+@import 'bootstrap/scss/placeholders';
+@import 'bootstrap/scss/progress';
+@import 'bootstrap/scss/badge';
+@import 'bootstrap/scss/alert';
+@import 'bootstrap/scss/dropdown';
+
+// Generates the utility classes (d-flex, gap-*, text-*, bg-*, etc.) from the $utilities map.
+@import 'bootstrap/scss/utilities/api';
+
+// ---- Custom tokens: light mode (default) -------------------------------------------------------
+:root,
+[data-bs-theme='light'] {
+  --bc-accent: #{$bc-accent};
+  --bc-income: #{$bc-income};
+  --bc-expense: #{$bc-expense};
+  --bc-warning-budget: #{$bc-warning-budget};
+  --bc-surface: #ffffff;
+}
+
+// ---- Custom tokens + Bootstrap CSS-variable overrides: dark mode -------------------------------
+// Bootstrap 5.3 resolves its own colours through `--bs-*` custom properties per colour mode;
+// re-declaring the ones our brand colour touches here (rather than a parallel dark stylesheet)
+// is the officially supported pattern for anything outside the neutral palette.
+[data-bs-theme='dark'] {
+  --bs-primary: #{$primary-dark};
+  --bs-primary-rgb:
+    #{color.channel($primary-dark, 'red', $space: rgb)},
+    #{color.channel($primary-dark, 'green', $space: rgb)},
+    #{color.channel($primary-dark, 'blue', $space: rgb)};
+  --bs-link-color: var(--bs-primary);
+  --bs-link-color-rgb: var(--bs-primary-rgb);
+  --bs-link-hover-color: var(--bs-primary);
+  --bs-body-bg: #{$body-bg-dark};
+  --bs-body-color: #{$body-color-dark};
+  --bs-secondary-color: #{$secondary-color-dark};
+  --bs-secondary: #{$secondary-color-dark};
+  --bs-secondary-rgb:
+    #{color.channel($secondary-color-dark, 'red', $space: rgb)},
+    #{color.channel($secondary-color-dark, 'green', $space: rgb)},
+    #{color.channel($secondary-color-dark, 'blue', $space: rgb)};
+  --bs-border-color: #{$border-color-dark};
+  --bc-accent: #{$bc-accent-dark};
+  --bc-income: #{$bc-income-dark};
+  --bc-expense: #{$bc-expense-dark};
+  --bc-warning-budget: #{$bc-warning-budget-dark};
+  --bc-surface: #{$surface-bg-dark};
+}
+
+// `.btn-outline-secondary`'s idle/border/hover colours are baked in at build time from the Sass
+// `$secondary` variable (Bootstrap's `button-outline-variant` mixin sets `--bs-btn-color`/
+// `--bs-btn-border-color`/etc. to a literal colour, never to `var(--bs-secondary)`), so they never
+// pick up the dark-mode `--bs-secondary` override above — every outline-secondary button/text
+// inside one (Cancel, pagination Previous/Next, the font-size control, "Log Out", ThemeToggle's
+// label…) stayed at the light-mode `$secondary-color`: 3.31:1 against the dark body background,
+// below WCAG 2.2 AA's 4.5:1 (caught by the P18 axe E2E check, TC-27). Re-running the same mixin
+// with the dark-mode colour, scoped to dark mode, fixes every one of them at once.
+[data-bs-theme='dark'] {
+  .btn-outline-secondary {
+    @include button-outline-variant($secondary-color-dark);
+  }
+}
+
+// ---- Money / status colour utilities --------------------------------------------------------
+// Always paired with an explicit +/- sign in markup (MoneyText) – never colour alone (WCAG).
+.text-bc-income {
+  color: var(--bc-income) !important;
+}
+.text-bc-expense {
+  color: var(--bc-expense) !important;
+}
+.text-bc-accent {
+  color: var(--bc-accent) !important;
+}
+.text-bc-warning-budget {
+  color: var(--bc-warning-budget) !important;
+}
+
+// Tabular figures so columns of money amounts line up.
+.money {
+  font-variant-numeric: tabular-nums;
+}
+
+// ---- Cards: light shadow, dark mode uses a 1px border instead of a shadow --------------------
+.card {
+  border: 0;
+  box-shadow: 0 1px 3px rgba(15, 23, 32, 0.08);
+}
+[data-bs-theme='dark'] .card {
+  border: 1px solid var(--bs-border-color);
+  box-shadow: none;
+}
+
+// ---- Student/admin sidebar: icon-only at md, full width at lg+ (StudentLayout, AdminLayout) --
+.cc-sidebar {
+  width: 4.5rem;
+  flex-shrink: 0;
+}
+@media (min-width: 992px) {
+  .cc-sidebar {
+    width: 15rem;
+  }
+}
+
+// ---- Reduced motion: collapse Bootstrap's transition utilities to near-instant ----------------
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

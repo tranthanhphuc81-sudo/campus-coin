@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # Root + all 3 npm workspaces (shared/backend/frontend) share one lockfile — Dependabot only
+  # needs one npm entry pointed at the root.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # Security patches land immediately as their own PR; everything else batches weekly so CI
+      # (and a human) isn't reviewing a dozen individual dependency-bump PRs.
+      minor-and-patch:
+        update-types: [minor, patch]
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

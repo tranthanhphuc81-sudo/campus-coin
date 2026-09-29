@@ -1,0 +1,201 @@
+date,amount,type,description,category
+2026-07-26,8.50,expense,Karaoke with classmates,Entertainment
+2026-07-19,9.14,expense,Cloud storage top-up,Subscriptions
+2026-06-23,8.95,expense,Cinema tickets,Entertainment
+2026-07-17,9.12,expense,Netflix subscription,Subscriptions
+2026-08-17,84.03,income,Part-time job pay,Part-time Job
+2026-06-06,5.54,expense,Movie night with friends,Entertainment
+2026-06-16,31.00,expense,Lab fee,Academics
+2026-07-12,291.77,income,Tien tro cap hang thang,Allowance
+2026-06-23,6.17,expense,Bus pass top-up,Transport
+2026-08-19,3.05,expense,Bus pass top-up,Transport
+2026-06-07,15.06,expense,Cloud storage top-up,Subscriptions
+2026-06-09,17.89,expense,Lab fee,Academics
+2026-06-11,115.07,income,Part-time job pay,Part-time Job
+2026-08-22,31.13,income,Birthday gift money,Gift
+2026-08-05,16.68,expense,Lab fee,Academics
+2026-08-31,12.41,expense,Laundry service,Miscellaneous
+2026-07-02,179.52,expense,Tien tro thang,Hostel/Rent
+2026-07-12,14.57,expense,Cloud storage top-up,Subscriptions
+2026-07-10,219.67,expense,Dorm rent,Hostel/Rent
+2026-06-29,10.56,expense,Phone case,Miscellaneous
+2026-08-15,14.77,expense,Phone case,Miscellaneous
+2026-08-04,215.47,expense,Dorm rent,Hostel/Rent
+2026-07-01,7.24,expense,Cloud storage top-up,Subscriptions
+2026-08-12,7.44,expense,Pho for dinner,Food
+2026-06-01,14.81,expense,Cloud storage top-up,Subscriptions
+2026-06-20,11.42,expense,Textbook rental,Academics
+2026-08-04,183.66,expense,Dorm rent,Hostel/Rent
+2026-06-03,19.79,expense,Haircut,Miscellaneous
+2026-06-16,36.42,expense,Printing lecture notes,Academics
+2026-07-10,7.37,expense,Spotify subscription,Subscriptions
+2026-08-22,47.34,expense,Mua sach giao trinh,Academics
+2026-07-25,182.06,expense,Dorm rent,Hostel/Rent
+2026-08-01,3.20,expense,Xe buyt den truong,Transport
+2026-06-12,5.49,expense,Com trua can tin,Food
+2026-07-15,13.55,expense,Cloud storage top-up,Subscriptions
+2026-07-11,17.13,expense,Haircut,Miscellaneous
+2026-08-22,6.65,expense,Xe buyt den truong,Transport
+2026-06-20,43.42,expense,Lab fee,Academics
+2026-08-19,6.39,expense,Cinema tickets,Entertainment
+2026-06-16,15.89,expense,Cloud storage top-up,Subscriptions
+2026-08-15,16.99,expense,Karaoke with classmates,Entertainment
+2026-07-03,8.29,expense,Haircut,Miscellaneous
+2026-08-26,165.16,expense,Tien tro thang,Hostel/Rent
+2026-07-04,300.85,income,Tien tro cap hang thang,Allowance
+2026-08-27,18.45,expense,Mua sach giao trinh,Academics
+2026-06-26,8.29,expense,Canteen lunch special,Food
+2026-07-23,8.92,expense,Karaoke with classmates,Entertainment
+2026-08-01,41.05,expense,Printing lecture notes,Academics
+2026-07-10,200.46,expense,Dorm rent,Hostel/Rent
+2026-06-25,39.48,expense,Mua sach giao trinh,Academics
+2026-06-13,254.85,income,Tien tro cap hang thang,Allowance
+2026-08-20,67.16,expense,Textbook rental,Academics
+2026-06-06,4.95,expense,Xe buyt den truong,Transport
+2026-06-09,20.93,expense,Movie night with friends,Entertainment
+2026-07-21,13.62,expense,Textbook rental,Academics
+2026-06-09,296.79,income,Tien tro cap hang thang,Allowance
+2026-07-22,7.05,expense,Bubble tea with friends,Food
+2026-06-27,75.99,expense,Textbook rental,Academics
+2026-08-27,75.34,expense,Lab fee,Academics
+2026-08-03,14.88,expense,Cinema tickets,Entertainment
+2026-08-09,10.10,expense,Spotify subscription,Subscriptions
+2026-08-28,17.63,expense,Cinema tickets,Entertainment
+2026-08-01,181.70,expense,Tien tro thang,Hostel/Rent
+2026-08-20,233.68,expense,Tien tro thang,Hostel/Rent
+2026-07-27,6.73,expense,Netflix subscription,Subscriptions
+2026-08-28,6.40,expense,Xe buyt den truong,Transport
+2026-08-07,7.32,expense,Motorbike fuel,Transport
+2026-07-21,13.72,expense,Bubble tea with friends,Food
+2026-08-02,59.64,expense,Mua sach giao trinh,Academics
+2026-07-18,258.48,income,Monthly allowance from home,Allowance
+2026-07-05,6.69,expense,Karaoke with classmates,Entertainment
+2026-06-04,14.13,expense,Netflix subscription,Subscriptions
+2026-07-28,3.80,expense,Laundry service,Miscellaneous
+2026-07-28,26.73,expense,Printing lecture notes,Academics
+2026-08-06,15.85,expense,Mua sach giao trinh,Academics
+2026-08-11,3.06,expense,Phone case,Miscellaneous
+2026-06-04,7.93,expense,Grab to campus,Transport
+2026-07-24,153.21,expense,Tien tro thang,Hostel/Rent
+2026-08-07,228.55,expense,Dorm rent,Hostel/Rent
+2026-07-17,8.18,expense,Banh mi buoi sang,Food
+2026-08-20,20.63,expense,Lab fee,Academics
+2026-06-14,13.01,expense,Netflix subscription,Subscriptions
+2026-06-23,10.22,expense,Spotify subscription,Subscriptions
+2026-06-19,11.59,expense,Mua sach giao trinh,Academics
+2026-08-28,3.28,expense,Grab to campus,Transport
+2026-08-05,4.19,expense,Motorbike fuel,Transport
+2026-06-17,69.38,expense,Textbook rental,Academics
+2026-06-09,10.49,expense,Phone case,Miscellaneous
+2026-07-17,19.40,expense,Mua sach giao trinh,Academics
+2026-08-30,201.81,expense,Dorm rent,Hostel/Rent
+2026-08-10,43.95,expense,Printing lecture notes,Academics
+2026-06-04,175.15,expense,Dorm rent,Hostel/Rent
+2026-07-17,141.10,income,Part-time job pay,Part-time Job
+2026-08-10,16.73,expense,Cinema tickets,Entertainment
+2026-07-21,40.44,expense,Printing lecture notes,Academics
+2026-07-24,47.64,income,Birthday gift money,Gift
+2026-06-17,10.58,expense,Karaoke with classmates,Entertainment
+2026-07-27,48.86,expense,Textbook rental,Academics
+2026-07-16,16.74,expense,Lab fee,Academics
+2026-08-05,10.63,expense,Umbrella,Miscellaneous
+2026-06-01,8.84,expense,Com trua can tin,Food
+2026-08-02,11.64,expense,Cloud storage top-up,Subscriptions
+2026-08-30,19.23,expense,Umbrella,Miscellaneous
+2026-08-14,3.42,expense,Pho for dinner,Food
+2026-07-16,7.26,expense,Cloud storage top-up,Subscriptions
+2026-08-17,6.51,expense,Haircut,Miscellaneous
+2026-06-15,7.76,expense,Cinema tickets,Entertainment
+2026-06-23,247.45,expense,Tien tro thang,Hostel/Rent
+2026-07-08,18.68,expense,Cinema tickets,Entertainment
+2026-08-20,9.07,expense,Cloud storage top-up,Subscriptions
+2026-07-06,9.04,expense,Netflix subscription,Subscriptions
+2026-07-19,1.52,expense,Xe buyt den truong,Transport
+2026-07-30,68.11,expense,Mua sach giao trinh,Academics
+2026-07-07,2.27,expense,Motorbike fuel,Transport
+2026-08-02,53.38,expense,Mua sach giao trinh,Academics
+2026-08-22,4.15,expense,Campus Cafe latte,Food
+2026-08-23,254.02,income,Tien tro cap hang thang,Allowance
+2026-08-08,12.91,expense,Bubble tea with friends,Food
+2026-07-02,6.00,expense,Movie night with friends,Entertainment
+2026-07-28,13.30,expense,Movie night with friends,Entertainment
+2026-07-25,4.76,expense,Netflix subscription,Subscriptions
+2026-08-05,7.60,expense,Motorbike fuel,Transport
+2026-07-10,247.88,expense,Tien tro thang,Hostel/Rent
+2026-08-21,200.85,expense,Tien tro thang,Hostel/Rent
+2026-08-24,7.88,expense,Bus pass top-up,Transport
+2026-07-17,10.24,expense,Com trua can tin,Food
+2026-08-30,19.02,expense,Phone case,Miscellaneous
+2026-06-29,178.78,expense,Dorm rent,Hostel/Rent
+2026-08-26,186.45,expense,Tien tro thang,Hostel/Rent
+2026-07-12,55.46,expense,Lab fee,Academics
+2026-07-20,8.77,expense,Cloud storage top-up,Subscriptions
+2026-07-29,11.13,expense,Spotify subscription,Subscriptions
+2026-07-08,7.59,expense,Banh mi buoi sang,Food
+2026-07-01,269.68,income,Tien tro cap hang thang,Allowance
+2026-06-04,12.21,expense,Netflix subscription,Subscriptions
+2026-06-20,7.55,expense,Spotify subscription,Subscriptions
+2026-07-27,8.99,expense,Cinema tickets,Entertainment
+2026-07-02,10.38,expense,Umbrella,Miscellaneous
+2026-06-17,15.22,expense,Cloud storage top-up,Subscriptions
+2026-07-08,5.01,expense,Motorbike fuel,Transport
+2026-06-16,41.38,income,Birthday gift money,Gift
+2026-07-19,14.15,expense,Haircut,Miscellaneous
+2026-07-19,6.05,expense,Phone case,Miscellaneous
+2026-08-24,8.73,expense,Spotify subscription,Subscriptions
+2026-06-30,237.16,expense,Tien tro thang,Hostel/Rent
+2026-08-21,9.72,expense,Spotify subscription,Subscriptions
+2026-08-07,172.17,expense,Tien tro thang,Hostel/Rent
+2026-07-10,258.48,income,Monthly allowance from home,Allowance
+2026-07-02,35.29,expense,Printing lecture notes,Academics
+2026-08-31,61.95,expense,Printing lecture notes,Academics
+2026-06-27,6.91,expense,Grab to campus,Transport
+2026-07-05,50.09,income,Birthday gift money,Gift
+2026-07-23,77.08,income,Luong lam them,Part-time Job
+2026-08-17,9.51,expense,Laundry service,Miscellaneous
+2026-06-02,8.78,expense,Bubble tea with friends,Food
+2026-07-07,29.19,income,Birthday gift money,Gift
+2026-06-12,15.69,expense,Cloud storage top-up,Subscriptions
+2026-08-18,4.56,expense,Xe buyt den truong,Transport
+2026-08-15,13.90,expense,Pho for dinner,Food
+2026-08-25,14.45,expense,Campus Cafe latte,Food
+2026-08-01,11.26,expense,Com trua can tin,Food
+2026-08-13,41.02,income,Birthday gift money,Gift
+2026-07-04,319.43,income,Tien tro cap hang thang,Allowance
+2026-07-22,3.47,expense,Banh mi buoi sang,Food
+2026-08-25,15.83,expense,Umbrella,Miscellaneous
+2026-06-14,5.47,expense,Grab to campus,Transport
+2026-07-21,3.83,expense,Spotify subscription,Subscriptions
+2026-08-21,13.51,expense,Spotify subscription,Subscriptions
+2026-06-21,5.39,expense,Pho for dinner,Food
+2026-06-22,8.55,expense,Spotify subscription,Subscriptions
+2026-07-08,13.80,expense,Mua sach giao trinh,Academics
+2026-07-28,14.11,expense,Cloud storage top-up,Subscriptions
+2026-07-15,5.57,expense,Bus pass top-up,Transport
+2026-07-07,9.79,expense,Umbrella,Miscellaneous
+2026-08-25,13.39,expense,Bubble tea with friends,Food
+2026-06-25,19.48,expense,Movie night with friends,Entertainment
+2026-07-03,11.89,expense,Pho for dinner,Food
+2026-07-13,2.89,expense,Bus pass top-up,Transport
+2026-06-20,30.29,income,Birthday gift money,Gift
+2026-06-04,9.59,expense,Banh mi buoi sang,Food
+2026-07-12,6.91,expense,Spotify subscription,Subscriptions
+2026-08-11,14.63,expense,Movie night with friends,Entertainment
+2026-07-04,9.40,expense,Laundry service,Miscellaneous
+2026-07-08,5.47,expense,Spotify subscription,Subscriptions
+2026-07-30,70.66,expense,Lab fee,Academics
+2026-08-23,69.57,expense,Printing lecture notes,Academics
+2026-06-24,71.67,income,Part-time job pay,Part-time Job
+2026-08-06,3.68,expense,Grab to campus,Transport
+2026-08-29,21.21,expense,Karaoke with classmates,Entertainment
+2026-06-25,155.86,expense,Dorm rent,Hostel/Rent
+2026-08-06,6.55,expense,Laundry service,Miscellaneous
+2026-07-27,6.58,expense,Motorbike fuel,Transport
+2026-07-28,37.33,expense,Lab fee,Academics
+2026-08-28,11.62,expense,Pho for dinner,Food
+2026-08-16,7.71,expense,Pho for dinner,Food
+2026-07-23,203.47,expense,Dorm rent,Hostel/Rent
+2026-06-05,12.22,expense,Umbrella,Miscellaneous
+2026-07-19,6.43,expense,Pho for dinner,Food
+2026-06-27,6.96,expense,Netflix subscription,Subscriptions
+2026-06-20,13.57,expense,Umbrella,Miscellaneous

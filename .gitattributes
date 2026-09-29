@@ -1,0 +1,25 @@
+# Force LF line endings for every text file, even when working on Windows.
+# Reason: shell scripts, Dockerfiles and nginx configs run inside Linux containers
+# and break with CRLF ("\r: command not found"). VS Code edits LF files fine on Windows.
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binary files – never touch
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.ico  binary
+*.pdf  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.zip  binary
+*.docx binary
+
+# P11 CSV-import test fixture: deliberately invalid, non-UTF-8 bytes (TC-18) — must survive byte-for-byte.
+backend/tests/fixtures/csv/binary.csv binary
