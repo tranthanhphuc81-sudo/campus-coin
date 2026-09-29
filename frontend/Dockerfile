@@ -8,7 +8,7 @@
 # Spec: docs/spec/04 §4.4 (Bảng 12: nginx non-root) · docs/spec/10 §10.1 (bundle budget)
 # =============================================================================
 
-FROM node:24-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY shared/package.json shared/package.json
