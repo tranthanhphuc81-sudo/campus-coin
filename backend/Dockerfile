@@ -25,7 +25,7 @@
 # Spec: docs/spec/04 §4.4 (Bảng 12) · docs/spec/09 §9.16 (non-root, no build tools in final image)
 # =============================================================================
 
-FROM node:24-alpine AS base
+FROM node:26-alpine AS base
 WORKDIR /app
 
 # ---- deps: everything needed to build (incl. devDependencies) -----------------------------
