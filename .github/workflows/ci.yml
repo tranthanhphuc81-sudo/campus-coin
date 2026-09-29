@@ -198,19 +198,19 @@ jobs:
         run: docker build -f backend/Dockerfile -t campuscoin-api:ci .
       - name: Build frontend/nginx image
         run: docker build -f frontend/Dockerfile -t campuscoin-web:ci .
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: campuscoin-api:ci
           severity: HIGH,CRITICAL
           exit-code: '1'
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: campuscoin-web:ci
           severity: HIGH,CRITICAL
           exit-code: '1'
       # IaC misconfig scan (docker-compose.prod.yml, Dockerfiles) — docs/spec/09 §9.16 "Trivy quét
       # image và IaC".
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: .
